@@ -5,6 +5,9 @@ not before? If that sentence is hard to write, the release is not a finished ver
 
 ## Unreleased
 
+- Datenschutz: the server keeps an access log with shortened IP addresses for 14 days, and every page reports its
+  view to a reader count on the same server (GoatCounter, no cookies, infra `services/stats`).
+
 ## v0.2.2 (2026-10-06)
 
 Readers on a phone can open a Steckbrief from the parliament views with a second tap and reach every section through a
