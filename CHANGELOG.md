@@ -5,6 +5,11 @@ not before? If that sentence is hard to write, the release is not a finished ver
 
 ## Unreleased
 
+## v0.2.3 (2026-10-16)
+
+Readers can see on the Datenschutz page what the server records about a visit: an access log with shortened IP
+addresses and a reader count without cookies.
+
 - Datenschutz: the server keeps an access log with shortened IP addresses for 14 days, and every page reports its
   view to a reader count on the same server (GoatCounter, no cookies, infra `services/stats`).
 
