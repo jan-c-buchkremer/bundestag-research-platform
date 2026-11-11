@@ -5,6 +5,22 @@ not before? If that sentence is hard to write, the release is not a finished ver
 
 ## Unreleased
 
+Readers can see on a Vorgang and on an Ausschuss page what the Bundestag's own news service hib reported about it,
+with a link to each Meldung on bundestag.de.
+
+- Vorgang pages: the section "hib-Meldungen" lists every Meldung that links one of the Vorgang's Drucksachen, the
+  newest first, with date, kind, title and hib number.
+- A Vorgang hib reported on gets its page even before the plenum takes it up (a new Antrag, a Bericht); Kleine and
+  Große Anfragen keep theirs under Fragen. The Radar's "Diese Woche" links these pages.
+- Drucksache rows: a small "hib" link to the newest Meldung on that Drucksache.
+- Gremium pages: the timeline "Sitzungen und Anhörungen laut hib" by month, each Meldung with the Drucksachen it
+  links. hib's committee names (short forms, genitive) map to the Stammdaten names in `bodies.HIB_COMMITTEES`;
+  `bodies.hib_unmatched` lists the names still missing.
+- The text of a Meldung is protected and not shown anywhere, nor in the search index or any JSON; a test builds the
+  site and checks every file for it.
+- Links to a Meldung use the short form `bundestag.de/<id>`, as the Parlamentsnachrichten asked.
+- `tests/schema.sql`: the foundation v0.3.0 tables `hib_item` and `hib_drucksache`.
+
 ## v0.2.3 (2026-10-16)
 
 Readers can see on the Datenschutz page what the server records about a visit: an access log with shortened IP
