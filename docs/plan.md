@@ -6,29 +6,30 @@ Goals in the order they are worked on, each from the reader's side. No dates: ho
 order is the plan. The first unfinished goal is the current one; every change is reviewed against it. Ideas that
 don't serve it go on "Not now", not into code.
 
-1. **Front page and the two parts of the site** (in review: research #55, radar #16). A reader who arrives at
-   plenar-radar.de lands on a front page that shows what the site offers and takes them there in one click, and on
-   every page can tell by its look whether they are in Research (checkable facts, blue) or on the Radar (selection
-   and interpretation, violet; docs/architecture.md, "Telling Radar apart").
+1. **Front page and the two parts of the site** (done: research #55, radar #16; released in research and radar
+   v0.2.0). A reader who arrives at plenar-radar.de lands on a front page that shows what the site offers and takes them
+   there in one click, and on every page can tell by its look whether they are in Research (checkable facts, blue) or on
+   the Radar (selection and interpretation, violet; docs/architecture.md, "Telling Radar apart").
    - The front page at `/`, the Abgeordnete list at `abgeordnete.html` (old `/#…` links forward there).
    - One shell with a mode (`shell.css`): Recherche or Radar in the header; Kompass and Themen are Radar pages with
      a method note; Radar links inside Research pages are Radar elements; the Themenlandschaft takes the same header.
-2. **Sachgebiete as an entity** (merged: research #56). A reader can open any of DIP's 28 Sachgebiete and see what the Bundestag did in
-   it: the Vorgänge by kind, the Drucksachen, the debates with their speeches, the decisions and roll-call votes,
-   and which fractions were active, each with its source. A Sachgebiet is the Bundestag's own classification, so it
-   is Research, not Radar.
+2. **Sachgebiete as an entity** (done: research #56, foundation #40; released in v0.2.0). A reader can open any of
+   DIP's 28 Sachgebiete and see what the Bundestag did in it: the Vorgänge by kind, the Drucksachen, the debates with
+   their speeches, the decisions and roll-call votes, and which fractions were active, each with its source. A
+   Sachgebiet is the Bundestag's own classification, so it is Research, not Radar.
    - EU-Vorlagen get their own page as a kind of Vorgang (not beside the Sachgebiete: a Sachgebiet says what
      something is about, an EU-Vorlage where it comes from), with the committee each went to, linked with the
      Sachgebiet "Europapolitik und Europäische Union".
    - Vorgänge without a Sachgebiet (Fragen, EU-Vorlagen, petitions) and plenary business without a Vorgang
      (Aktuelle Stunden, Regierungsbefragung, Fragestunde) are named as such, not hidden.
-3. **Choose by seeing.** A reader picks what to look at by seeing it, not by reading a dropdown: the data itself is
-   the control. The big Sachgebiete are big tiles, the fractions are coloured chips, a bill's way through the
+3. **Choose by seeing.** (Released in v0.2.0 and v0.2.2: #57, #58, #61, #64. Open: the Fraktion pages and the
+   Redeanteile, see "Not yet" below.) A reader picks what to look at by seeing it, not by reading a dropdown: the data
+   itself is the control. The big Sachgebiete are big tiles, the fractions are coloured chips, a bill's way through the
    procedure is a pipeline whose stages they click, a strip of weeks narrows the time. Every chart is also a filter
    (click, keyboard), filters combine, the state lives in the URL fragment (shareable, the back button works), one
-   "zurücksetzen". Every chart has "Als Liste" or "Als Tabelle" for what was there before; without JavaScript the
-   page shows the chart, its table and the full list. Sizes and order come from counts only (no rankings of people,
-   no ratings). Everything here is Research: the accent and the fraction colours, never the Radar's violet.
+   "zurücksetzen". Every chart has "Als Liste" or "Als Tabelle" for what was there before; without JavaScript the page
+   shows the chart, its table and the full list. Sizes and order come from counts only (no rankings of people, no
+   ratings). Everything here is Research: the accent and the fraction colours, never the Radar's violet.
    - The components (`controls.py`, drawn in Python at build time as HTML with inline sizes, one button per
      clickable part; `controls.js`, the one shared script): tile field, fraction chips, pipeline, segmented bar,
      stacked bar rows, activity strip (a bar per calendar week, the sitting weeks marked; long lists show the newest
@@ -39,7 +40,8 @@ don't serve it go on "Not now", not into code.
    - A Vorgang's date in lists is its latest step that has happened by the build date; a later Inkrafttreten is
      named on the row.
    - Built in this order. Merged (research #57): `vorgaenge/index.html`, `sachgebiete/index.html`,
-     `sachgebiete/<slug>.html`, `vorgaenge/eu-vorlagen.html`, `abstimmungen/index.html`. In review, the second round:
+     `sachgebiete/<slug>.html`, `vorgaenge/eu-vorlagen.html`, `abstimmungen/index.html`. Merged (research #58), the
+     second round:
      - Fragen (`questions.py`): the statistics are charts that choose a list and filter it (a click on a fraction's
        row of the Kleine Anfragen opens their list for that fraction); each kind's list has chips for Fraktion,
        Ressort and Stand, the answer time as a segmented bar and a column per month instead of the selects. The
@@ -54,11 +56,11 @@ don't serve it go on "Not now", not into code.
        on a Gremium's page the composition, role chips and name filter the members.
    - Not yet: the Fraktion pages (`fraktionen/<token>.html`) and the Redeanteile of Debattenkultur, which are bar
      charts in tables already.
-   - **Groups of Vorgänge** (next, decided 2026-10-06). A reader of the Vorgänge index first sees what kinds of
-     business the Bundestag handles, then DIP's Art within one. Today 1,623 of the index's 3,410 rows are Mündliche
-     Fragen: `procedures.load` lists every Vorgang with a debate or decision, and the Fragestunde's agenda item carries
-     the "Fragen" Drucksache, so each counts as debated, although none has a decision and 1,403 were answered in
-     writing. Their siblings (9,038 Schriftliche Fragen, 2,761 Kleine Anfragen) are not on the page.
+   - **Groups of Vorgänge** (done: research #61, released in v0.2.0). A reader of the Vorgänge index first sees what
+     kinds of business the Bundestag handles, then DIP's Art within one. Today 1,623 of the index's 3,410 rows are
+     Mündliche Fragen: `procedures.load` lists every Vorgang with a debate or decision, and the Fragestunde's agenda
+     item carries the "Fragen" Drucksache, so each counts as debated, although none has a decision and 1,403 were
+     answered in writing. Their siblings (9,038 Schriftliche Fragen, 2,761 Kleine Anfragen) are not on the page.
      - Six groups, by what the instrument does (GO-BT), one table in `procedures.py` like `STAGE`, DIP's Art kept on
        every row. The grouping is ours and the page says so; it maps instruments and interprets nothing, so Research.
 
@@ -87,8 +89,10 @@ don't serve it go on "Not now", not into code.
        page of goal 4 replaces them, then forward there.
      - `vorgaenge_controls` is shared with the Sachgebiet pages (`subjects.vorgaenge_list`), so they get the group
        bar too; there the Fragen (4,656 Kleine Anfrage rows across all Sachgebiete) stay in the list, separable by it.
-4. **Fragen as text.** A reader reads every question to the government and its answer on the site, not in a PDF,
-   can search them, and sees for each who asked and who answered.
+4. **Fragen as text.** (Released in v0.2.0, research #62 on foundation v0.2.0. Since v0.2.1 the 10,662 Einzelfrage
+   pages are not in the full-text search, so the build fits its 6g container; they are found by title in the
+   Einzelfragen list.) A reader reads every question to the government and its answer on the site, not in a PDF, can
+   search them, and sees for each who asked and who answered.
    - Three subpages of Fragen, not new items in the top bar: Kleine und Große Anfragen (a Fraktion asks),
      Einzelfragen (an MdB asks, § 105 and Anlage 4 GO-BT), Regierungsbefragung (asked live, not submitted).
      `regierung/index.html` stays their overview. Schriftliche and Mündliche Fragen are one instrument with two ways
@@ -126,6 +130,41 @@ don't serve it go on "Not now", not into code.
      no Fraktion order within a day yet.
    - This goal replaces the requirements of 12.5 ("Foundation requirements found here"): the asker and Ressort per
      Frage are in the store (`question_activity`), the texts come with this contract.
+5. **What is going on this week, from hib** (decided 2026-10-07; step 1 released in foundation v0.3.0, steps 2 and 4
+   in review: research #66). A reader who opens the Radar first sees what the Bundestag is working on now: the new
+   Vorlagen, the committee sessions and hearings of the last days, before the plenary protocol exists. From there they go to the Themenlandschaft, the Fraktionen and each Vorgang. The source
+   is "heute im bundestag" (hib), the Bundestag's own news service (Parlamentsnachrichten): short articles on
+   nearly every Vorlage and on the committees' sessions, each tagged with a Ressort and a kind.
+   - What hib holds (measured on 400 items, 14 September to 7 October 2026): 89 % summarise a Drucksache (Antwort and
+     Kleine Anfrage 62 %, Antrag, Gesetzentwurf, Unterrichtung, Bericht 26 %), 11 % report a committee session (6 %)
+     or a public hearing (5 %). The committee reports are the only part the store has nothing on; some name how each
+     Fraktion voted in the committee. About 8,000 items in WP 21, 27,256 in the archive.
+   - How it joins: every Drucksache summary links its Drucksachen as `dserver…/btd/…` PDFs (15 of 15 in a sample of
+     30; all 35 linked numbers are in the store). Committee reports mostly link none (7 of 9); they join to a Gremium
+     by the committee named in the text and the date, the Ressort tag points to it.
+   - Terms: hib texts are protected; the bundestag.de Impressum allows only private use without written consent, and
+     hib is not among its exceptions. The Parlamentsnachrichten answered Jan's request in writing (shown 2026-11-11):
+     use each item's headline and teaser with a link, not the full text, because items are corrected afterwards
+     (digits, spelling, other errors). The teaser is the `<description>` of the RSS feed
+     (bundestag.de/static/appdata/includes/rss/hib.rss), a text written for social media and not on the item's page;
+     the link is the short form `bundestag.de/<id>`, not `/presse/hib/kurzmeldungen-<id>`. Fetching the archive at
+     a tight rate may get the IP blocked for a while. So the pages show headline, date, hib number, Ressort, kind
+     and the short link, never the text, nor in the search index or any JSON. The text stays in the store
+     for parsing (Drucksachen, committee) and as a source for the Radar's own texts: summaries in Einfacher Sprache
+     written from hib articles, each naming and linking the items it draws on, are ordinary journalistic use of a
+     source (Jan, 2026-11-11). The reply did not address them; the Parlamentsnachrichten said they would get back
+     after a closer look. The foundation's `docs/licences.md` hib row is to say the same (still "text needs consent").
+   - Built in this order:
+     1. Foundation: fetch the WP 21 archive once from the list behind bundestag.de/presse/hib
+        (`/ajax/filterlist/de/presse/hib/454590-454590?offset=N`, 20 items a page, about one request a second),
+        then the new items daily. Per item: hib number, date, title, Ressort, kind, author code, URL, the linked
+        Drucksachen, the raw HTML. The text is stored for parsing, never shown. The RSS teaser is left out for now
+        (2026-11-11; it needs an hourly read of the feed): foundation `docs/plan.md`, "Not now".
+     2. Research: a "hib-Meldung" link on every Vorgang and Drucksache page an item refers to.
+     3. Radar: a start page for the week, from hib and the store's sittings, votes and topics. hib's selection is
+        the Bundestag's, so the page names it as the source; what the Radar adds is what hib lacks: the speeches,
+        votes and Fraktion patterns behind each item and the way into the Themenlandschaft.
+     4. Research: a timeline of hearings and reported sessions on each Gremium page.
 
 ## Not now
 
