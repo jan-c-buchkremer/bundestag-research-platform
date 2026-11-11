@@ -5,8 +5,6 @@ not before? If that sentence is hard to write, the release is not a finished ver
 
 ## Unreleased
 
-## v0.3.0 (2026-10-07)
-
 Readers can see on a Vorgang and on an Ausschuss page what the Bundestag's own news service hib reported about it,
 with a link to each Meldung on bundestag.de.
 
@@ -20,8 +18,16 @@ with a link to each Meldung on bundestag.de.
   `bodies.hib_unmatched` lists the names still missing.
 - The text of a Meldung is protected and not shown anywhere, nor in the search index or any JSON; a test builds the
   site and checks every file for it.
-- `tests/schema.sql`: the foundation's `hib_item` and `hib_drucksache` (foundation branch `hib`), generated from that
-  branch until the foundation releases them.
+- Links to a Meldung use the short form `bundestag.de/<id>`, as the Parlamentsnachrichten asked.
+- `tests/schema.sql`: the foundation v0.3.0 tables `hib_item` and `hib_drucksache`.
+
+## v0.2.3 (2026-10-16)
+
+Readers can see on the Datenschutz page what the server records about a visit: an access log with shortened IP
+addresses and a reader count without cookies.
+
+- Datenschutz: the server keeps an access log with shortened IP addresses for 14 days, and every page reports its
+  view to a reader count on the same server (GoatCounter, no cookies, infra `services/stats`).
 
 ## v0.2.2 (2026-10-06)
 

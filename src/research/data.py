@@ -956,8 +956,10 @@ def drucksache_ref(number: str, dip: dict[str, sqlite3.Row]) -> dict:
 
 
 # hib ("heute im bundestag") items: what the pages may show. The article text (hib_item.text) is protected
-# (bundestag.de Impressum) and never read here, so it reaches no page, no search index and no JSON.
-_HIB_COLUMNS = "id, number, date, title, ressort, kind, committee, source_url"
+# (bundestag.de Impressum) and never read here, so it reaches no page, no search index and no JSON. Links use the
+# short form the Parlamentsnachrichten asked for (bundestag.de/<id>), not the stored /presse/hib/kurzmeldungen-<id>.
+_HIB_COLUMNS = "id, number, date, title, ressort, kind, committee"
+HIB_LINK = "https://www.bundestag.de/{}"
 
 
 def hib_items(conn: sqlite3.Connection) -> list[dict]:
@@ -973,7 +975,7 @@ def hib_items(conn: sqlite3.Connection) -> list[dict]:
             numbers[r["hib_id"]].append(r["drucksache_number"])
     return [
         {"id": r["id"], "number": r["number"], "date": r["date"], "title": r["title"], "ressort": r["ressort"],
-         "kind": r["kind"], "committee": r["committee"], "url": r["source_url"],
+         "kind": r["kind"], "committee": r["committee"], "url": HIB_LINK.format(r["id"]),
          "drucksachen": [drucksache_ref(x, dip) for x in numbers[r["id"]]]}
         for r in conn.execute(f"SELECT {_HIB_COLUMNS} FROM hib_item WHERE wahlperiode = ? "
                               "ORDER BY date DESC, id DESC", (WP,))

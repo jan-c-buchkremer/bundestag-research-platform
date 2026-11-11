@@ -19,6 +19,13 @@ LANDSCAPE = LANDSCAPE.rstrip("/") + "/"
 # Where the cards themselves are published: the footer's Impressum and Datenschutz links are absolute, so the same
 # constant works on every page whatever its depth
 RESEARCH = os.environ.get("RESEARCH_URL", "https://plenar-radar.de/").rstrip("/") + "/"
+# The reader count (infra services/stats, GoatCounter): count.js reports the page view to /count. Loaded on the public
+# host only, so local previews, the tailnet preview and the UI check neither count nor ask for a script they lack.
+# datenschutz.html (legal.py) describes it; change both together.
+COUNTER = (
+    '<script>if(location.hostname==="plenar-radar.de"){var s=document.createElement("script");'
+    's.async=true;s.src="/count.js";s.dataset.goatcounter="/count";document.head.appendChild(s)}</script>'
+)
 LEGAL = f'<a href="{RESEARCH}impressum.html">Impressum</a> · <a href="{RESEARCH}datenschutz.html">Datenschutz</a>'
 MONTHS = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November",
           "Dezember")  # fmt: skip
@@ -161,7 +168,7 @@ def site_header(root: str, active: str | None, mode: str = "research") -> str:
         f'<header class="m-{mode} has-menu"><script>document.currentScript.parentElement.classList.add("menu-js")'
         f'</script><nav class="site" aria-label="Bereiche"><div class="nav-l">{search}{left}</div>'
         f'<div class="nav-c">{home}</div><div class="nav-r">{right}{radar}{menu}</div></nav>'
-        f'<script src="{root}nav.js" defer></script></header>'
+        f'<script src="{root}nav.js" defer></script>{COUNTER}</header>'
     )
 
 

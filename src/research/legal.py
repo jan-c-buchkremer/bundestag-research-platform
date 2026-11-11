@@ -1,7 +1,8 @@
 """The two legal pages at the site root: impressum.html (who runs the site, how to reach him) and datenschutz.html
 (what happens to a visitor's data). Every footer links both (ui.LEGAL). The privacy page describes the deployment in
-the infra repo: Cloudflare in front, a Caddy without access logs behind it, fonts and scripts from the site itself.
-Change it when that changes."""
+the infra repo: Cloudflare in front, behind it a Caddy whose access log has shortened addresses and is deleted after
+14 days, the reader count (GoatCounter, services/stats; ui.COUNTER), fonts and scripts from the site itself. Change it
+when that changes."""
 
 from __future__ import annotations
 
@@ -51,13 +52,16 @@ Open Font License 1.1.</p>
 
 def datenschutz() -> str:
     body = f"""<section class="card"><h1>Datenschutzerklärung</h1><div class="lines">
-<div>Keine Cookies, kein Tracking, keine Statistik über Besuche.</div><div>Stand: {AS_OF}</div></div></section>
+<div>Keine Cookies. Besuche werden auf dem eigenen Server gezählt, ohne vollständige IP-Adressen zu speichern.</div>
+<div>Stand: {AS_OF}</div></div></section>
 <div class="qs">
 <h2>Verantwortlich</h2>
 <p>{CONTACT}</p>
 <h2>Kurz gesagt</h2>
 <ul>
-<li>Die Seite setzt keine Cookies, speichert nichts in Ihrem Browser und zählt keine Besuche.</li>
+<li>Die Seite setzt keine Cookies und speichert nichts in Ihrem Browser.</li>
+<li>Besuche werden auf dem eigenen Server gezählt, um zu sehen, welche Seiten gelesen werden. Vollständige
+IP-Adressen werden dabei nicht gespeichert. Die Daten werden nicht weitergegeben.</li>
 <li>Schrift und Skripte kommen von dieser Seite selbst; beim Aufruf werden keine Inhalte von anderen Servern
 nachgeladen.</li>
 <li>Es gibt keine Konten und keine Formulare. Die Suche läuft vollständig in Ihrem Browser.</li>
@@ -75,9 +79,25 @@ Auslieferung der Seite. Cloudflare verarbeitet die Daten als Auftragsverarbeiter
 Übermittlung in die USA ist möglich; Cloudflare ist nach dem EU-US Data Privacy Framework zertifiziert, für das ein
 Angemessenheitsbeschluss der EU-Kommission besteht (Art. 45 DSGVO). Mehr dazu in der
 <a href="https://www.cloudflare.com/privacypolicy/">Datenschutzerklärung von Cloudflare</a>.</p>
-<h2>Server</h2>
-<p>Hinter Cloudflare liegt die Seite auf einem eigenen Server in Deutschland. Er speichert keine Zugriffsprotokolle
-und damit auch keine IP-Adressen der Besucher.</p>
+<h2>Server und Zugriffsprotokoll</h2>
+<p>Hinter Cloudflare liegt die Seite auf einem eigenen Server in Deutschland. Er protokolliert jeden Abruf mit Datum
+und Uhrzeit, aufgerufener Adresse, Antwortcode, der Kennung Ihres Browsers (User-Agent), der zuvor besuchten Seite
+(Referrer) und dem Land, das Cloudflare Ihrer IP-Adresse zuordnet. Die IP-Adresse wird vor dem Speichern gekürzt:
+bei IPv4 auf die ersten drei von vier Teilen, bei IPv6 auf die ersten drei von acht. So lässt sie sich keinem
+einzelnen Anschluss mehr zuordnen. Das Protokoll wird täglich abgeschlossen und nach 14 Tagen gelöscht, ein Eintrag
+bleibt also höchstens 15 Tage gespeichert. Es dient dazu, Fehler zu finden und automatisierte Zugriffe zu erkennen,
+und wird nur in zusammengefasster Form ausgewertet.</p>
+<h2>Besucherzählung</h2>
+<p>Jede Seite lädt von diesem Server ein kleines Skript (GoatCounter), das den Seitenaufruf an den Server meldet: die
+aufgerufene Adresse, die zuvor besuchte Seite (Referrer), die Bildschirmgröße und die Kennung Ihres Browsers. Aus
+Ihrer IP-Adresse wird dabei nur das Land bestimmt und ein Merkmal gebildet, mit dem mehrere Aufrufe innerhalb
+weniger Stunden als ein Besuch gezählt werden. Das Merkmal wird regelmäßig verworfen, die IP-Adresse selbst wird nicht
+gespeichert. Es werden keine Cookies gesetzt, und es entsteht kein Profil über längere Zeit. Gespeichert werden nur
+Zählungen, etwa wie oft eine Seite aufgerufen wurde, mit welchem Browser und aus welchem Land.</p>
+<p>Rechtsgrundlage für Protokoll und Zählung ist Art. 6 Abs. 1 lit. f DSGVO: mein berechtigtes Interesse daran, die
+Seite sicher zu betreiben und zu erfahren, welche Inhalte gelesen werden. Beides läuft ausschließlich auf dem eigenen
+Server, die Daten werden nicht an Dritte weitergegeben. Sie können der Zählung widersprechen (Art. 21 DSGVO); dafür
+genügt eine E-Mail, oder Sie blockieren das Skript im Browser.</p>
 <h2>E-Mail</h2>
 <p>Wenn Sie mir schreiben, verwende ich Ihre Adresse und Ihre Nachricht nur, um zu antworten, und lösche sie, wenn
 sie dafür nicht mehr nötig sind (Art. 6 Abs. 1 lit. f DSGVO). Das Postfach liegt bei Google (Gmail).</p>

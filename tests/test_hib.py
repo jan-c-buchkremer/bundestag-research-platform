@@ -4,7 +4,8 @@ protected: no page shows them (test_e2e.py builds the whole site from these rows
 from research import bodies, data, facts, procedures
 
 MARKER = "GESCHUETZTER-HIB-TEXT-7f3a"
-HIB = "https://www.bundestag.de/presse/hib/kurzmeldungen-{}"
+STORED = "https://www.bundestag.de/presse/hib/kurzmeldungen-{}"
+HIB = "https://www.bundestag.de/{}"  # the short link the pages use
 FORSCHUNG = "Forschung, Technologie, Raumfahrt und Technikfolgenabschätzung"
 # id, number, date, ressort, kind, title, committee, Drucksachen in the order the text mentions them
 ITEMS = [
@@ -31,7 +32,7 @@ def add_hib(c) -> None:
     """The hib items above, each with MARKER in its protected text."""
     c.executemany(
         "INSERT INTO hib_item VALUES (?,?,?,21,?,?,?,'STO',?,?,?,?,'2026-10-07')",
-        [(i, num, d, title, ressort, kind, com, f"{MARKER} Der Text der Meldung {i}.", HIB.format(i), f"hib {num}")
+        [(i, num, d, title, ressort, kind, com, f"{MARKER} Der Text der Meldung {i}.", STORED.format(i), f"hib {num}")
          for i, num, d, ressort, kind, title, com, _ in ITEMS],
     )  # fmt: skip
     c.executemany(
