@@ -30,5 +30,7 @@ def test_radar_only_what_was_built(conn):
     assert 'class="world radar"' not in page(conn)  # no Themenlandschaft data, no themes, no Kompass
     html = page(conn, themes=32, compass=True, landscape=True)
     radar = html.split('<section class="world radar"', 1)[1].split("</section>", 1)[0]
-    assert f'href="{ui.LANDSCAPE}"' in radar and 'href="themen/index.html"' in radar and 'href="kompass.html"' in radar
+    assert f'class="radar-go" href="{ui.LANDSCAPE}index.html"' in radar  # the way to the Radar's start page
+    assert f'href="{ui.LANDSCAPE}geschichten.html"' in radar and f'href="{ui.LANDSCAPE}index.html#period"' in radar
+    assert 'href="kompass.html"' in radar and "32 Themen" in radar
     assert 'class="rl"' in html  # the week in the Themenlandschaft, as a Radar link

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from research import redirects, urls
 from research.data import NO_FRACTION, WP, display_name, doc_label, feminine, government_roles
-from research.ui import SHORT, TOKEN, dot, e, fraction_order, n, short_date
+from research.ui import SHORT, TOKEN, dot, e, frac_chip, fraction_order, n, person_chip, short_date
 
 BUCKETS = ("1", "2", "3", "4", "5 und mehr")
 CHAIR = re.compile(r"^(Vorsitzende[r]?|Delegationsleiter)$")  # a Gremium's chair (bodies.py groups by it too)
@@ -280,17 +280,24 @@ def section(r: dict, government_page: bool) -> str:
         return f'{_card(c)} {dot(f)}<span class="faint">{e(SHORT.get(f, f))}</span>'
 
     none = '<p class="explain">Keine in den Stammdaten.</p>'
-    pres = "".join(f"<li>{e(x['role'] or 'Mitglied')}: {who(x['card'])}</li>" for x in r["presidium"])
+
+    def pm(c: dict, role: str) -> str:  # a person card of the people grid (design.css), with role and fraction
+        f = c["fraction"] or NO_FRACTION
+        sub = f'<span class="pr">{role}</span><span class="pmeta">{frac_chip(f, "")}</span>'
+        tok = TOKEN.get(f, "reg")
+        chip = person_chip(c["id"], c["name"], "", bool(c.get("photo")), sub)
+        return f'<div class="pm" style="--c:var(--{tok})">{chip}</div>'
+
+    def grid(items: str, compact: bool = False) -> str:
+        return f'<div class="people{" compact" if compact else ""}">{items}</div>' if items else none
+
+    pres = "".join(pm(x["card"], e(x["role"] or "Mitglied")) for x in r["presidium"])
     slug = r["presidium"][0]["body"]["slug"] if r["presidium"] else None
     pres_link = f'<p><a href="gremien/{e(slug)}.html">Zum Präsidium →</a></p>' if slug else ""
-    fch = "".join(
-        f'<li><a href="fraktionen/{TOKEN.get(x["fraction"], "frl")}.html">{e(SHORT.get(x["fraction"], x["fraction"]))}'
-        f"</a>: {who(x['card'])}</li>"
-        for x in r["fraction_chairs"] if x["fraction"] in TOKEN
-    )  # fmt: skip
-    chairs = "".join(f'<li><a href="gremien/{e(x["body"]["slug"])}.html">{e(x["body"]["short"])}</a>: {who(x["card"])}'
-                     "</li>" for x in r["chairs"])  # fmt: skip
-    gov = "".join(f"<li>{e(g['office'])}: {who(g['card'])}</li>" for g in r["government"] if g.get("card"))
+    fch = "".join(pm(x["card"], e(x["role"])) for x in r["fraction_chairs"] if x["fraction"] in TOKEN)
+    chairs = "".join(pm(x["card"], f'<a href="gremien/{e(x["body"]["slug"])}.html">{e(x["body"]["short"])}</a>')
+                     for x in r["chairs"])  # fmt: skip
+    gov = "".join(pm(g["card"], e(g["office"])) for g in r["government"] if g.get("card"))
     gov_more = (
         " Alle Ämter mit Daten und Quellen stehen auf der Seite der "
         '<a href="gremien/bundesregierung.html">Bundesregierung</a>.'
@@ -304,12 +311,12 @@ def section(r: dict, government_page: bool) -> str:
         '<p class="explain">Präsidium, Fraktionsvorsitz, Vorsitz der Ausschüsse und Gremien, Ämter in der '
         "Bundesregierung und die Dauer der Mitgliedschaft. Jede Rolle führt "
         f"zur Seite ihres Gremiums, ihrer Fraktion oder der Bundesregierung, jeder Name zum Steckbrief.{src}</p>"
-        f"<h3>Präsidium</h3>{f'<ul>{pres}</ul>' if pres else none}{pres_link}"
-        f"<h3>Fraktionsvorsitz</h3>{f'<ul>{fch}</ul>' if fch else none}"
-        f"<h3>Vorsitz der Ausschüsse und Gremien</h3>{f'<ul>{chairs}</ul>' if chairs else none}"
+        f"<h3>Präsidium</h3>{grid(pres)}{pres_link}"
+        f"<h3>Fraktionsvorsitz</h3>{grid(fch)}"
+        f"<h3>Vorsitz der Ausschüsse und Gremien</h3>{grid(chairs, True)}"
         f"<h3>In der Bundesregierung</h3>"
         f'<p class="explain">Mitglieder des Bundestages mit einem Regierungsamt heute.{gov_more}</p>'
-        f"{f'<ul>{gov}</ul>' if gov else none}"
+        f"{grid(gov, True)}"
         f"{_tenure_section(r['tenure'])}{_changes_section(r['changes'])}</section>"
     )
 

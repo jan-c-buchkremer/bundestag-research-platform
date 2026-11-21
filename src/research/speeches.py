@@ -130,10 +130,10 @@ def speech_page(r: dict, cards: set[str], clusters: dict[str, dict], similar: li
 {marks}
 <span hidden data-pagefind-meta="date:{e(r["date"])}"></span>
 <section class="card sp-head" style="--c:var(--{TOKEN.get(main["fraction"] or "", "reg")})">
-  <div class="when">{e(long_date(r["date"], True))} · {r["number"]}. Sitzung</div>
+  <div class="when" data-pagefind-ignore>{e(long_date(r["date"], True))} · {r["number"]}. Sitzung</div>
   <h1 data-pagefind-meta="title">{e(main["name"])}: {e(topic)}</h1>
-  <div class="lines">{speaker(main, cards)} · <a href="{item}">{e(r["label"] or "Tagesordnung")}</a> · {n(words)} Wörter</div>
-  <div class="links">{"".join(links)}</div>
+  <div class="lines" data-pagefind-ignore>{speaker(main, cards)} · <a href="{item}">{e(r["label"] or "Tagesordnung")}</a> · {n(words)} Wörter</div>
+  <div class="links" data-pagefind-ignore>{"".join(links)}</div>
 </section>
 <div class="speech">{"".join(parts)}</div>
 </article>

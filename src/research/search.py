@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 from research import data, urls
 from research.ui import FOOTER, ORDER, TOKEN, shell
@@ -26,10 +27,16 @@ from research.ui import FOOTER, ORDER, TOKEN, shell
 TYPES = ("Person", "Gruppe", "Ort", "Vorgang", "Sachgebiet", "Thema", "Sitzungswoche")
 GEMEINDE = "Gemeinde"  # the sub line of a Gemeinde entry; the light index leaves them out
 
-BODY = f"""<h1>Suche</h1>
-<p class="lead">Die Suche findet zuerst Abgeordnete, Fraktionen und Gremien, Länder, Wahlkreise und
-Gemeinden, Vorgänge, Sachgebiete, Themen und Sitzungswochen mit ihrer Seite. Darunter folgt die Volltextsuche in
-allen Reden der 21. Wahlperiode. Die Filter grenzen sie nach Art, Fraktion, Person, Monat und Thema ein.</p>
+EXAMPLES = ("Friedrich Merz", "Bürgergeld", "Düren", "Haushaltsausschuss", "Wärmepumpe")
+
+BODY = f"""<section class="card ent-head s-head">
+<div class="when">Recherche</div>
+<h1>Suche</h1>
+<p class="explain">Die Suche findet zuerst Abgeordnete, Fraktionen und Gremien, Länder, Wahlkreise und Gemeinden,
+Vorgänge, Sachgebiete, Themen und Sitzungswochen mit ihrer Seite. Darunter folgt die Volltextsuche in allen Reden und
+Beiträgen der Fragestunde der 21. Wahlperiode. Die Filter grenzen sie nach Art, Fraktion, Person, Monat und Thema
+ein.</p>
+<div class="lines">Personen, Orte, Gremien, Vorgänge, Themen und Sitzungswochen, dazu der Wortlaut aller Reden.</div>
 <div class="search" id="search">
   <div class="s-bar">
     <input type="search" id="sq" placeholder="Name, Ort, Vorgang, Thema oder Wort aus einer Rede …"
@@ -37,15 +44,20 @@ allen Reden der 21. Wahlperiode. Die Filter grenzen sie nach Art, Fraktion, Pers
     <button type="button" id="sf-toggle" class="sf-toggle" aria-expanded="false" aria-controls="sf-panel">Filter
     </button>
   </div>
-  <div class="s-entities" id="s-entities" aria-live="polite"></div>
-  <h2 class="s-h">Reden</h2>
-  <div class="s-count" id="s-count" aria-live="polite"></div>
+  <div class="s-ex" id="s-ex">Beispiele: {"".join(f'<a href="?q={quote(x)}">{x}</a>' for x in EXAMPLES)}</div>
+  <div class="utags" id="s-jump" hidden></div>
+</div>
+</section>
+<div class="s-entities" id="s-entities" aria-live="polite"></div>
+<h2 id="reden" class="s-h2">Reden <span class="n" id="s-n" hidden></span></h2>
+  <div class="s-tools"><div class="s-count" id="s-count" aria-live="polite"></div>
+    <button type="button" class="sf-side" id="sf-side" aria-controls="sf-panel" aria-expanded="true">Filter
+      ausblenden</button></div>
   <div class="s-layout">
     <aside class="s-filters" id="sf-panel" aria-label="Filter"></aside>
-    <div class="rows" id="s-results"></div>
+    <div class="s-main"><div class="rows" id="s-results" hidden></div>
+    <button type="button" class="more" id="s-more" hidden>Weitere Treffer</button></div>
   </div>
-  <button type="button" class="more" id="s-more" hidden>Weitere Treffer</button>
-</div>
 <noscript><p>Die Suche braucht JavaScript.</p></noscript>
 <footer>{FOOTER}</footer>
 <script type="module" src="search.js"></script>"""
@@ -109,7 +121,7 @@ def entities(cards: list[dict], bodies: list[dict], government: bool, procs: lis
 
 
 def search_page() -> str:
-    return shell(root="", kind="p-search", active=None, title="Suche – Bundestag, 21. Wahlperiode",
+    return shell(root="", kind="p-search", active=None, title="Suche",
                  desc="Volltextsuche in den Reden, Abstimmungen, Sitzungen und Abgeordneten des 21. Bundestages.",
                  body=BODY, data={"kind": "search"},
                  head=HEAD)  # fmt: skip

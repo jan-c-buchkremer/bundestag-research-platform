@@ -205,7 +205,9 @@ def pipeline(key: str, stages: list[tuple[str, str, int]], ended: list[tuple[str
 
     def stage(value: str, label: str, k: int, cls: str) -> str:
         bar = f'<i class="pb" style="width:{_pct(k, most)}%"></i>'
-        return toggle(key, value, f'<span class="pl">{e(label)}</span>{_count(k)}{bar}', cls=cls, label=label)
+        return toggle(
+            key, value, f'<span class="pl">{e(label)}</span>{_count(k)}{bar}', cls=f"{cls} st-{value}", label=label
+        )
 
     main = "".join(f"<li>{stage(v, label, k, 'stage')}</li>" for v, label, k in stages)
     branch = "".join(stage(v, label, k, "stage end") for v, label, k in ended)
@@ -213,6 +215,18 @@ def pipeline(key: str, stages: list[tuple[str, str, int]], ended: list[tuple[str
     end = (f'<div class="pipe-end">{f"<span class=k>{e(ended_title)}</span>" if branch else ""}{branch}{extra}</div>'
            if branch or extra else "")  # fmt: skip
     return f'<div class="pipe" role="group" aria-label="{e(title)}"><ol class="pipe-main">{main}</ol>{end}</div>'
+
+
+def sorter(options: list[tuple[str, str, str, str]]) -> str:
+    """The order of a scope's list (controls.js): (key, label, "desc" or "asc", what the date column shows), the
+    first pressed; a row carries its value as data-s-<key> and its shown date as data-d-<key>."""
+    out = "".join(
+        f'<button type="button" data-sort="{e(k)}" data-dir="{d}" data-note="{e(note)}" '
+        f'aria-pressed="{"true" if i == 0 else "false"}">{e(label)}</button>'
+        for i, (k, label, d, note) in enumerate(options)
+    )
+    return (f'<div class="ctl-sort" role="group" aria-label="Reihenfolge"><span class="k">Reihenfolge</span>{out}'
+            f'<span class="sn" data-sort-note>{e(options[0][3])}</span></div>')  # fmt: skip
 
 
 def sized_chips(key: str, items: list[tuple[str, str, int]], title: str, also: str = "") -> str:
@@ -244,11 +258,12 @@ def group_chips(key: str, counts: Counter, title: str = "Einbringer") -> str:
 
 
 def stacked(key: str, groups: list[tuple[str, str, str, Counter]], kinds: list[tuple], title: str,
-            noun: str, also: str = "") -> str:  # fmt: skip
+            noun: str, also: str = "", hrefs: dict[str, str] | None = None, show: int = 0) -> str:  # fmt: skip
     """One row per group (value, label, colour token, counts by kind), the segments per kind (`kinds`: (kind,
     label) in the kinds' neutral shades, or (kind, label, colour token), e.g. the fractions), the length by the
     group's total against the largest; the numbers in the row's text and on each segment's tooltip. A row toggles its
-    group; `also` chooses a list with it."""
+    group; `also` chooses a list with it. `hrefs`: a row whose value has one is a link to that page instead.
+    `show`: only the first rows, the rest folded behind „Alle … zeigen“."""
     most = max([sum(c.values()) for *_, c in groups] + [1])
     out = []
     for value, label, colour, c in groups:
@@ -263,7 +278,14 @@ def stacked(key: str, groups: list[tuple[str, str, str, Counter]], kinds: list[t
         inner = (f'<span class="sn"><i class="dot" style="background:var(--{colour})"></i>{e(label)}</span>'
                  f'<span class="sb"><span class="sbar" style="width:{_pct(total, most)}%">{segs}</span></span>'
                  f'<span class="stot">{_count(total)}</span><span class="sx">{text}</span>')  # fmt: skip
-        out.append(toggle(key, value, inner, cls="srow", label=label, also=also))
+        if hrefs and value in hrefs:
+            out.append(f'<a class="srow" href="{e(hrefs[value])}">{inner}</a>')
+        else:
+            out.append(toggle(key, value, inner, cls="srow", label=label, also=also))
+    if show and len(out) > show:
+        out[show:] = [
+            f'<details class="srest"><summary>Alle {n(len(out))} zeigen</summary>{"".join(out[show:])}</details>'
+        ]
     legend = "".join(f'<span><i {_shade(i, k, "sw")} style="{_bg(k)[1:]}"></i>{e(k[1])}</span>'
                      for i, k in enumerate(kinds)) if len(kinds) > 1 else ""  # fmt: skip
     return (f'<div class="stack" role="group" aria-label="{e(title)}">'

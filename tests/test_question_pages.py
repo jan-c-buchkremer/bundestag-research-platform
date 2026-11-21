@@ -103,7 +103,8 @@ def test_befragung_groups_turns_by_question(conn):
     ]
     assert b["questioned"][0]["person"] == "9"
     html = question_pages.befragung_page(b, {"1", "9"})
-    assert "1. Frage von Anna Adler" in html and f'href="../../{urls.speech("ID12")}"' in html
+    assert '<span class="qn">1.</span>' in html and "Anna Adler" in html
+    assert f'href="../../{urls.speech("ID12")}"' in html and 'data-fraktion="' in html
     assert question_pages.befragungen_page([b], set()).count("<li>") == 1
 
 
@@ -111,7 +112,7 @@ def test_write_forwards_the_muendliche_frage_vorgang_page(conn, tmp_path):
     add_questions(conn)
     (tmp_path / "vorgaenge").mkdir()
     got = question_pages.write(conn, tmp_path, {"1"}, ["2026-07-08"])
-    assert got == {"anfragen": 2, "einzelfragen": 1, "befragungen": 1}
+    assert got == {"anfragen": 2, "einzelfragen": 1, "befragungen": 1, "fragestunden": 0}
     assert (tmp_path / urls.anfrage("k1")).exists() and (tmp_path / urls.befragung("21/88")).exists()
     stub = (tmp_path / urls.vorgang("m1")).read_text()
     assert 'http-equiv="refresh"' in stub and "regierung/fragen/m1.html" in stub

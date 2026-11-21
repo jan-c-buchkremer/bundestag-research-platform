@@ -51,12 +51,52 @@ function resolve(index, q, cap = ENTITY_CAP) {
   return groups.filter(g => g.total);
 }
 
-function entitiesHtml(groups) {
-  return groups.map(g => `<section class="s-ent"><h3>${esc(g.type)} <span class="n">${g.total}</span></h3>` +
-    `<div class="rows">${g.items.map(x => `<a class="row sent" href="${esc(x.href)}"><span class="t">` +
-      `<span class="ti">${esc(x.label)}</span><span class="sub">${esc(x.sub)}</span></span></a>`).join('')}</div>` +
-    (g.total > g.items.length ? `<p class="faint">und ${g.total - g.items.length} weitere – genauer suchen</p>` : '') +
-    '</section>').join('');
+// the heading of each entity type, the anchor it is jumped to by (#e-person …) and the site's colour tokens
+const SINGULAR = { Person: 'Person', Gruppe: 'Fraktion oder Gremium', Ort: 'Ort', Vorgang: 'Vorgang',
+  Sachgebiet: 'Sachgebiet', Thema: 'Thema', Sitzungswoche: 'Sitzungswoche' };
+const PLURAL = { Person: 'Personen', Gruppe: 'Fraktionen und Gremien', Ort: 'Orte', Vorgang: 'Vorgänge',
+  Sachgebiet: 'Sachgebiete', Thema: 'Themen', Sitzungswoche: 'Sitzungswochen' };
+const TOKEN = { 'CDU/CSU': 'cdu', SPD: 'spd', AfD: 'afd', 'BÜNDNIS 90/DIE GRÜNEN': 'gru', 'Die Linke': 'lin',
+  fraktionslos: 'frl', Bundesregierung: 'reg' };
+// a Vorgang's DIP status in the colours of the phase pills (design.css .php, procedures.STATUS_STAGE)
+const STAGE = { 'Noch nicht beraten': 'eingebracht', 'Überwiesen': 'ausschuesse', 'Beschlussempfehlung liegt vor':
+  'ausschuesse', Angenommen: 'beschlossen', Verabschiedet: 'beschlossen', 'Verkündet': 'verkuendet',
+  Abgelehnt: 'abgelehnt', 'Zustimmung versagt': 'versagt' };
+const SHOWN = 6; // rows per type before "Alle N zeigen"
+
+function anchor(type) { return `e-${norm(type)}`; }
+
+function entityRow(type, x) {
+  let sub = esc(x.sub), dot = '';
+  if (type === 'Person' && TOKEN[x.sub]) dot = `<span class="dot" style="--c:var(--${TOKEN[x.sub]})"></span>`;
+  if (type === 'Gruppe' && TOKEN[x.label]) dot = `<span class="dot" style="--c:var(--${TOKEN[x.label]})"></span>`;
+  if (type === 'Vorgang') {
+    const [kind, status] = x.sub.split(' · ');
+    if (status) sub = `${esc(kind)} <span class="php${STAGE[status] ? ` st-${STAGE[status]}` : ''}">${esc(status)}</span>`;
+  }
+  return `<a class="row sent" href="${esc(x.href)}"><span class="t"><span class="ti">${dot}${esc(x.label)}</span>` +
+    `<span class="sub">${sub}</span></span></a>`;
+}
+
+// One card per type; `open` holds the types shown in full (up to the cap resolve() was called with).
+function entitiesHtml(groups, open = new Set()) {
+  return groups.map(g => {
+    const shown = open.has(g.type) ? g.items : g.items.slice(0, SHOWN);
+    const rest = g.total - shown.length;
+    const more = shown.length < g.items.length
+      ? `<button type="button" class="s-all" data-t="${esc(g.type)}">Alle ${g.items.length < g.total ? `${g.items.length} von ` : ''}${g.total} zeigen</button>`
+      : rest > 0 ? `<p class="faint">und ${rest} weitere: genauer suchen</p>` : '';
+    return `<section class="s-ent${g.type === 'Vorgang' ? ' wide' : ''}" id="${anchor(g.type)}">` +
+      `<h3>${esc(PLURAL[g.type] || g.type)} <span class="n">${g.total.toLocaleString('de-DE')}</span></h3>` +
+      `<div class="rows">${shown.map(x => entityRow(g.type, x)).join('')}</div>${more}</section>`;
+  }).join('');
+}
+
+// The pills in the head: one per type found, then the speeches, each a jump to its section.
+function jumpHtml(groups, speeches) {
+  const pill = (href, k, label) => `<a class="utag" href="#${href}"><b>${k.toLocaleString('de-DE')}</b> ${esc(label)}</a>`;
+  return groups.map(g => pill(anchor(g.type), g.total, (g.total === 1 ? SINGULAR : PLURAL)[g.type] || g.type)).join('') +
+    (speeches ? pill('reden', speeches, speeches === 1 ? 'Rede' : 'Reden') : '');
 }
 
 // ------------------------------------------------------------------ speeches (Pagefind)
@@ -91,20 +131,27 @@ function sortValues(total, live) {
   return Object.keys(total).sort((a, b) => (live[b] || 0) - (live[a] || 0) || a.localeCompare(b, 'de'));
 }
 
-// The HTML of one filter group panel.
-function filterGroupHtml(group, total, live, checked, open) {
+// the groups folded at first (their heading stays, with the number of values chosen)
+const FOLDED = ['Thema', 'Monat', 'Person'];
+
+// The HTML of one filter group panel; `shut` folds it to its heading.
+function filterGroupHtml(group, total, live, checked, open, shut = false) {
   const values = sortValues(total, live || {});
   const shown = open ? values : values.slice(0, CAP);
   const rows = shown.map(v => {
     const c = (live || {})[v] || 0, on = checked.has(v);
+    const dot = group === 'Fraktion' ? `<span class="dot" style="--c:var(--${TOKEN[v] || 'reg'})"></span>` : '';
     return `<label class="sf-item${!c && !on ? ' zero' : ''}"><input type="checkbox" data-g="${esc(group)}" ` +
-      `value="${esc(v)}"${on ? ' checked' : ''}><span class="sf-name">${esc(v)}</span><span class="sf-n">${c}</span></label>`;
+      `value="${esc(v)}"${on ? ' checked' : ''}><span class="sf-name">${dot}${esc(v)}</span>` +
+      `<span class="sf-n">${c.toLocaleString('de-DE')}</span></label>`;
   }).join('');
   const more = values.length > CAP
     ? `<button type="button" class="sf-more" data-g="${esc(group)}">${open ? 'weniger' : `${values.length - CAP} weitere`}</button>`
     : '';
-  return `<div class="sf-group"><h3>${esc(LABELS[group] || group)}</h3>` +
-    `<div class="sf-list${open ? ' expanded' : ''}">${rows}</div>${more}</div>`;
+  const chosen = checked.size ? `<span class="sf-on">${checked.size} gewählt</span>` : '';
+  return `<div class="sf-group${shut ? ' shut' : ''}"><h3><button type="button" class="sf-h" data-g="${esc(group)}" ` +
+    `aria-expanded="${!shut}">${esc(LABELS[group] || group)}${chosen}<span class="sf-chev" aria-hidden="true"></span>` +
+    `</button></h3>${shut ? '' : `<div class="sf-list${open ? ' expanded' : ''}">${rows}</div>${more}`}</div>`;
 }
 
 async function boot() {
@@ -112,19 +159,32 @@ async function boot() {
   const n = x => x.toLocaleString('de-DE');
   const els = {
     input: $('sq'), toggle: $('sf-toggle'), filters: $('sf-panel'), count: $('s-count'),
-    results: $('s-results'), more: $('s-more'), entities: $('s-entities'),
+    results: $('s-results'), more: $('s-more'), entities: $('s-entities'), jump: $('s-jump'), ex: $('s-ex'),
+    n: $('s-n'),
   };
-  let INDEX = null;
+  let INDEX = null, GROUPS_FOUND = [], SPEECHES = 0;
+  const openTypes = new Set();
+  const renderJump = () => {
+    const q = els.input.value.trim();
+    els.jump.innerHTML = q ? jumpHtml(GROUPS_FOUND, SPEECHES) : '';
+    els.jump.hidden = !els.jump.innerHTML;
+    els.ex.hidden = !!q;
+  };
   const renderEntities = () => {
     if (!INDEX) return;
-    const groups = resolve(INDEX, els.input.value);
-    els.entities.innerHTML = groups.length ? entitiesHtml(groups)
-      : (els.input.value.trim() ? '<p class="empty">Keine Person, kein Ort, Gremium, Vorgang, Sachgebiet, Thema oder keine Woche mit diesem Namen.</p>' : '');
+    GROUPS_FOUND = resolve(INDEX, els.input.value, 60);
+    els.entities.innerHTML = GROUPS_FOUND.length ? entitiesHtml(GROUPS_FOUND, openTypes)
+      : (els.input.value.trim() ? '<p class="explain s-none">Keine Person, kein Ort, Gremium, Vorgang, Sachgebiet, Thema und keine Sitzungswoche mit diesem Namen.</p>' : '');
+    renderJump();
+  };
+  els.entities.onclick = ev => {
+    const b = ev.target.closest('.s-all');
+    if (b) { openTypes.add(b.dataset.t); renderEntities(); }
   };
   const entitiesReady = fetch('suche.json').then(r => r.json()).then(x => { INDEX = x; renderEntities(); })
     .catch(() => { els.entities.innerHTML = ''; });
 
-  const state = { checked: {}, open: {}, master: {}, results: [], shown: 0 };
+  const state = { checked: {}, open: {}, shut: {}, master: {}, results: [], shown: 0 };
 
   function activeFilters() {
     const f = {};
@@ -139,7 +199,8 @@ async function boot() {
 
   function renderFilters(live) {
     els.filters.innerHTML = GROUPS.filter(g => state.master[g])
-      .map(g => filterGroupHtml(g, state.master[g], live?.[g], state.checked[g] || new Set(), !!state.open[g]))
+      .map(g => filterGroupHtml(g, state.master[g], live?.[g], state.checked[g] || new Set(), !!state.open[g],
+        !!state.shut[g]))
       .join('');
     els.filters.querySelectorAll('input[type=checkbox]').forEach(cb => {
       cb.onchange = () => {
@@ -152,12 +213,16 @@ async function boot() {
     els.filters.querySelectorAll('.sf-more').forEach(btn => {
       btn.onclick = () => { state.open[btn.dataset.g] = !state.open[btn.dataset.g]; renderFilters(live); };
     });
+    els.filters.querySelectorAll('.sf-h').forEach(btn => {
+      btn.onclick = () => { state.shut[btn.dataset.g] = !state.shut[btn.dataset.g]; renderFilters(live); };
+    });
   }
 
   async function renderResults() {
     const slice = state.results.slice(0, state.shown);
     const data = slice.length ? await Promise.all(slice.map(r => r.data())) : [];
-    els.results.innerHTML = data.length ? data.map(resultRow).join('') : '<p class="empty">Keine Treffer.</p>';
+    els.results.innerHTML = data.map(resultRow).join('');
+    els.results.hidden = !data.length;
     els.more.hidden = state.shown >= state.results.length;
   }
 
@@ -168,16 +233,36 @@ async function boot() {
     if (res === null) return; // superseded by a newer keystroke
     state.results = res.results;
     state.shown = Math.min(PAGE_SIZE, state.results.length);
-    els.count.textContent = state.results.length
-      ? (q ? `${n(state.results.length)} Treffer für „${q}“` : `${n(state.results.length)} Treffer`)
-      : (q ? `Keine Treffer für „${q}“` : 'Keine Treffer');
+    SPEECHES = state.results.length;
+    els.n.textContent = n(SPEECHES);
+    els.n.hidden = false;
+    const active = Object.values(state.checked).some(s => s.size);
+    els.count.textContent = SPEECHES
+      ? `${q ? `Treffer für „${q}“` : 'Alle Reden'}${active ? ' mit den gewählten Filtern' : ''}${q ? ', die passendsten zuerst' : ''}.`
+      : (q ? `Keine Rede enthält „${q}“${active ? ' mit den gewählten Filtern' : ''}.` : 'Keine Rede mit den gewählten Filtern.');
+    renderJump();
     renderFilters(res.filters);
     await renderResults();
     syncUrl();
   }
 
-  els.input.oninput = () => { renderEntities(); run(true); };
+  els.input.oninput = () => { openTypes.clear(); renderEntities(); run(true); };
   els.more.onclick = () => { state.shown = Math.min(state.shown + PAGE_SIZE, state.results.length); renderResults(); };
+  // on a wide screen the whole column folds away and the hits take the width; the choice is kept for the next visit
+  const side = $('sf-side'), layout = document.querySelector('.s-layout');
+  const setSide = hide => {
+    layout.classList.toggle('nofilter', hide);
+    side.textContent = hide ? 'Filter zeigen' : 'Filter ausblenden';
+    side.setAttribute('aria-expanded', String(!hide));
+  };
+  let hidden = false;
+  try { hidden = localStorage.getItem('suche-filter') === 'aus'; } catch (e) { /* private mode */ }
+  setSide(hidden);
+  side.onclick = () => {
+    const hide = !layout.classList.contains('nofilter');
+    setSide(hide);
+    try { localStorage.setItem('suche-filter', hide ? 'aus' : 'an'); } catch (e) { /* private mode */ }
+  };
   if (els.toggle) {
     els.toggle.onclick = () => {
       const open = els.filters.classList.toggle('open');
@@ -190,6 +275,7 @@ async function boot() {
   for (const g of GROUPS) {
     const vs = params.getAll(g);
     if (vs.length) state.checked[g] = new Set(vs);
+    state.shut[g] = FOLDED.includes(g) && !vs.length;
   }
 
   await entitiesReady;
@@ -204,7 +290,7 @@ async function boot() {
     await run(false);
   } else {
     renderFilters(state.master);
-    els.results.innerHTML = '<p class="empty">Reden erscheinen, sobald du suchst oder einen Filter wählst.</p>';
+    els.count.textContent = 'Die Treffer erscheinen, sobald du suchst oder einen Filter wählst.';
   }
 }
 
@@ -217,5 +303,5 @@ if (typeof window !== 'undefined') window.cardsSearch = { resolve, norm };
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { esc, markSafe, formatDate, resultRow, queryString, sortValues, filterGroupHtml, norm, resolve,
-    entitiesHtml };
+    entitiesHtml, jumpHtml };
 }

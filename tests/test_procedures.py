@@ -230,6 +230,20 @@ def test_every_dip_art_has_a_group():
     assert 'data-gruppe="einzelfaelle" data-art="petition"' in row and ">Sammelübersicht<" in row
 
 
+def test_row_carries_stage_pill_and_sort_values():
+    """A row shows its stand as a coloured pill and carries what the sorter orders by: the newest step, the first
+    step (not a retroactive Inkrafttreten) and the number of steps."""
+    b = {**_proc("g", "Gesetzgebung"), "status": "Überwiesen", "timeline": [
+        {"date": "2025-01-01", "phase": "Verkündung", "what": "Inkrafttreten"},
+        {"date": "2026-03-04", "phase": "Eingebracht", "what": "Gesetzentwurf"},
+        {"date": "2026-06-01", "phase": "Beratung", "what": "1. Beratung"}]}  # fmt: skip
+    row = procedures.row(b, "g.html")
+    assert '<span class="php st-ausschuesse">In den Ausschüssen</span><span class="dipst">Überwiesen</span>' in row
+    assert 'data-s-start="2026-03-04" data-d-start="04.03.2026"' in row and 'data-s-schritte="0003"' in row
+    a = procedures.row({**_proc("a", "Antrag"), "status": "Angenommen"}, "a.html")
+    assert '<span class="php st-beschlossen">Angenommen</span>' in a
+
+
 def test_index_leaves_out_the_fragen_and_names_them():
     """The Mündliche Fragen debated in the Fragestunde are not on the index; a note names every kind of Frage and
     the Unterrichtungen that never reached the plenum, with their counts."""

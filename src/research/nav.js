@@ -63,7 +63,8 @@
       location.href = links[hi].href;
     }
   });
-  form.addEventListener('submit', e => { if (!input.value.trim()) e.preventDefault(); });
+  // an empty field leads to the search page itself, with its examples and filters
+  form.addEventListener('submit', e => { if (!input.value.trim()) { e.preventDefault(); location.href = `${root}suche.html`; } });
 
   function toggle(open) {
     header.classList.toggle('q-open', open);
@@ -89,4 +90,96 @@
     close();
     if (narrow.matches && header.classList.contains('q-open')) toggle(false);
   });
+})();
+
+// The design language (design.css): on Research pages, an explanation that follows a heading (p.explain) moves into an
+// info button at the end of the heading, as on the Radar; without JavaScript it stays where it is. Pages that draw
+// their tabs later (card.js) are watched. The info button: hover or focus shows it, a click pins it.
+(() => {
+  if (window.__info) return;
+  window.__info = true;
+  const research = !document.body.classList.contains('mode-radar');
+  const HEADS = 'H1, H2, H3';
+  const isEx = el => el && el.matches('p.explain');
+  const infoFor = h => {
+    let i = h.querySelector(':scope > .info');
+    if (!i) {
+      i = document.createElement('span');
+      i.className = 'info';
+      i.innerHTML = '<button type="button" class="info-b" aria-expanded="false" aria-label="Erklärung">i</button><span class="info-t" role="tooltip"></span>';
+      h.appendChild(i);
+    }
+    return i.lastChild;
+  };
+  const move = (t, html) => t.appendChild(Object.assign(document.createElement('p'), { innerHTML: html }));
+  // a long lead keeps its first sentence as the page's subtitle; the rest goes behind the button
+  const firstSentence = html => { const m = html.match(/^(.{60,260}?[^\d\s][.!?])\s+(?=[A-ZÄÖÜ„])/s); return m ? [m[1], html.slice(m[0].length)] : [html, '']; };
+  const convertAfter = h => {
+    let q = h.nextElementSibling;
+    if (q && q.matches('p.lead') && q.textContent.length > 260) {
+      const [keep, rest] = firstSentence(q.innerHTML);
+      if (rest) { q.innerHTML = keep; move(infoFor(h), rest); }
+      q = q.nextElementSibling;
+    } else if (q && q.matches('p.lead')) q = q.nextElementSibling;
+    let end = q, run = [];
+    while (isEx(end)) { run.push(end); end = end.nextElementSibling; }
+    // an explanation that is the section's only content (nothing after it) stays as text: it is the answer itself
+    if (!run.length || !end) return;
+    const t = infoFor(h);
+    run.forEach(p => { move(t, p.innerHTML); p.remove(); });
+  };
+  const convertBefore = p => {  // an explanation right before a heading (a tab's text above its list) goes with it
+    if (!p.isConnected || !isEx(p)) return;
+    let end = p; while (isEx(end.nextElementSibling)) end = end.nextElementSibling;
+    const h = end.nextElementSibling;
+    if (!h || !h.matches(HEADS)) return;
+    const t = infoFor(h), run = [];
+    for (let q = p; q !== h; q = q.nextElementSibling) run.push(q);
+    run.forEach(q => { move(t, q.innerHTML); q.remove(); });
+  };
+  const sweep = root => {
+    root.querySelectorAll(HEADS).forEach(h => { if (h.closest('main, .card')) convertAfter(h); });
+    root.querySelectorAll('p.explain').forEach(convertBefore);
+  };
+  if (research) {
+    const main = document.querySelector('main');
+    if (main) {
+      sweep(main);
+      let pending = false;
+      new MutationObserver(() => { if (pending) return; pending = true; requestAnimationFrame(() => { pending = false; sweep(main); }); }).observe(main, { childList: true, subtree: true });
+    }
+  }
+  const place = i => {
+    const b = i.querySelector('.info-b').getBoundingClientRect(), t = i.querySelector('.info-t');
+    const w = Math.min(400, innerWidth - 24);
+    t.style.left = Math.max(12, Math.min(b.left - 10, innerWidth - w - 12)) + 'px';
+    t.style.top = (b.bottom + 6) + 'px';
+    const h = t.getBoundingClientRect().height;
+    if (h && b.bottom + 6 + h > innerHeight - 8 && b.top - 6 - h > 8) t.style.top = (b.top - 6 - h) + 'px';
+  };
+  const close = keep => document.querySelectorAll('.info.pinned').forEach(i => {
+    if (i === keep) return;
+    i.classList.remove('pinned'); i.querySelector('.info-b').setAttribute('aria-expanded', 'false');
+  });
+  document.addEventListener('click', e => {
+    if (e.target.closest('.info-t')) return;
+    const b = e.target.closest('.info-b'), i = b && b.parentElement;
+    close(i);
+    if (!i) return;
+    e.preventDefault(); e.stopPropagation();
+    b.setAttribute('aria-expanded', String(i.classList.toggle('pinned')));
+    place(i);
+  }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(null); });
+  for (const ev of ['mouseover', 'focusin']) document.addEventListener(ev, e => { const i = e.target.closest && e.target.closest('.info'); if (i) requestAnimationFrame(() => place(i)); });
+  addEventListener('scroll', () => document.querySelectorAll('.info.pinned').forEach(place), { passive: true });
+  // the switch between the two versions, outside the public site while they are compared
+  if (research && location.hostname !== 'plenar-radar.de' && document.documentElement.dataset.design) {
+    const s = document.createElement('div');
+    s.className = 'dsw'; s.setAttribute('aria-label', 'Designversion');
+    const cur = document.documentElement.dataset.design;
+    s.innerHTML = ['a', 'b'].map(v => `<button type="button" data-v="${v}" aria-pressed="${v === cur}">Version ${v.toUpperCase()}</button>`).join('');
+    s.addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; localStorage.setItem('design', v); document.documentElement.dataset.design = v; s.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === v)); });
+    document.body.appendChild(s);
+  }
 })();

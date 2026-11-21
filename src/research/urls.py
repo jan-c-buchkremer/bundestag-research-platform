@@ -17,6 +17,7 @@ THEMES = "themen/index.html"
 ANFRAGEN = "regierung/anfragen.html"
 EINZELFRAGEN = "regierung/einzelfragen.html"
 BEFRAGUNGEN = "regierung/regierungsbefragung.html"
+FRAGESTUNDEN = "regierung/fragestunde.html"
 
 
 def person(pid: str) -> str:
@@ -88,6 +89,11 @@ def anfrage(vorgang_id: str) -> str:
 def frage(vorgang_id: str) -> str:
     """A Mündliche or Schriftliche Frage with its answer (question_pages.py)."""
     return f"regierung/fragen/{vorgang_id}.html"
+
+
+def fragestunde(sitting_id: str) -> str:
+    """The Fragestunde of a sitting, every question read out with its answer and follow-ups (question_pages.py)."""
+    return f"regierung/fragestunde/{page_id(sitting_id)}.html"
 
 
 def befragung(sitting_id: str) -> str:

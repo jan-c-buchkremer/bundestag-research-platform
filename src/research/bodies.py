@@ -39,12 +39,16 @@ from research.ui import (
     crumbs,
     dot,
     e,
+    entity_header,
     facet,
+    frac_chip,
     frac_link,
     fraction_order,
     n,
+    person_chip,
     shell,
     short_date,
+    stat_tiles,
 )
 
 FACET = 20  # newest entries of a long facet (D23)
@@ -112,7 +116,7 @@ def load_bodies(conn: sqlite3.Connection, cards: list[dict]) -> list[dict]:
         b["members"].append({
             "person": r["person_id"], "name": card["name"], "fraction": card["fraction"] or NO_FRACTION,
             "gender": card["gender"], "first_term": not any(wp < WP for wp in card["periods"]),
-            "role": r["role"], "from": r["from_date"], "to": r["to_date"],
+            "role": r["role"], "from": r["from_date"], "to": r["to_date"], "photo": bool(card.get("photo")),
         })  # fmt: skip
     out = list(bodies.values())
     for b in out:
@@ -166,15 +170,17 @@ GROUP_SLUGS = ("vorsitz", "stellv-vorsitz", "obleute", "ordentlich", "stellvertr
 
 
 def _member_row(m: dict) -> str:
+    """A member as a card in the people grid: face, name, role, fraction chip, since when."""
     if m["to"]:
         when = f"{short_date(m['from'])} – {short_date(m['to'])}" if m["from"] else f"bis {short_date(m['to'])}"
     else:
         when = f"seit {short_date(m['from'])}" if m["from"] else ""
-    who = f'<a href="../{e(m["person"])}.html">{e(m["name"])}</a>'
-    sub = f'<div class="sub">{e(m["role"])}</div>' if m["role"] else ""
+    tok = TOKEN.get(m["fraction"], "reg")
+    role = f'<span class="pr">{e(m["role"])}</span>' if m["role"] else ""
+    meta = f'<span class="pmeta">{frac_chip(m["fraction"])}<span class="pw">{when}</span></span>'
+    who = person_chip(m["person"], m["name"], "../", m.get("photo", False), role + meta)
     attrs = f' data-fraktion="{TOKEN.get(m["fraction"], "")}" data-rolle="{GROUP_SLUGS[role_group(m["role"])]}"'
-    return (f'<div class="row{" ended" if m["to"] else ""}"{attrs}><div class="t">{who} {dot(m["fraction"])}'
-            f'{frac_link(m["fraction"])}{sub}</div><div class="d">{when}</div></div>')  # fmt: skip
+    return f'<div class="pm row{" ended" if m["to"] else ""}" style="--c:var(--{tok})"{attrs}>{who}</div>'
 
 
 def _members_section(ms: list[dict]) -> str:
@@ -188,12 +194,12 @@ def _members_section(ms: list[dict]) -> str:
         if not groups[i]:
             continue
         rows = "".join(_member_row(m) for m in sorted(groups[i], key=lambda m: m["name"]))
-        parts.append(f'<section data-group><h3>{e(label)} <span class="n">{n(len(groups[i]))}</span></h3>'
-                     f'<div class="rows memb">{rows}</div></section>')  # fmt: skip
+        head = f'<h3 class="pgroup">{e(label)} <span class="n">{n(len(groups[i]))}</span></h3>'
+        parts.append(f'<section data-group>{head}<div class="people">{rows}</div></section>')
     roles = controls.chips("rolle", [(GROUP_SLUGS[i], label, len(groups[i]), "accent") for i, label in enumerate(GROUPS)
                                      if groups[i]], "Rolle")  # fmt: skip
     return (
-        "<h2>Mitglieder</h2>" + controls.toolbar("Name …") + controls.block("Rolle", roles)
+        controls.toolbar("Name …") + controls.block("Rolle", roles)
         + '<div class="count" data-count></div><div class="grps" data-rows data-row=".row" data-limit="9999">'
         + "".join(parts) + '<div class="rows"><div class="empty" data-none hidden>Keine Treffer für diese Auswahl.'
         "</div></div></div>"
@@ -203,7 +209,7 @@ def _members_section(ms: list[dict]) -> str:
 def _stats_section(ms: list[dict]) -> str:
     current = [m for m in ms if m["to"] is None]
     if not current:
-        return '<h2>Zusammensetzung</h2><p class="explain">Aktuell keine Mitglieder im Datenbestand.</p>'
+        return '<h3>Zusammensetzung</h3><p class="explain">Aktuell keine Mitglieder im Datenbestand.</p>'
     by_fraction = Counter(m["fraction"] for m in current)
     women = sum(1 for m in current if m["gender"] == "weiblich")
     first = sum(1 for m in current if m["first_term"])
@@ -216,7 +222,7 @@ def _stats_section(ms: list[dict]) -> str:
     items = [(TOKEN.get(f, "frl"), SHORT.get(f, f), by_fraction[f], TOKEN.get(f, "frl")) for f in order]
     chart = controls.segmented("fraktion", items, "Aktuelle Mitglieder nach Fraktion", "Mitglieder")
     return (
-        "<h2>Zusammensetzung</h2>"
+        "<h3>Zusammensetzung</h3>"
         f'<p class="explain">{n(len(current))} aktuelle Mitglieder, davon {n(women)} Frauen '
         f"({100 * women / len(current):.0f} %) und {n(first)} zum ersten Mal im Bundestag "
         f"({100 * first / len(current):.0f} %). Ein Klick auf eine Fraktion zeigt unten nur ihre Mitglieder.</p>"
@@ -226,10 +232,17 @@ def _stats_section(ms: list[dict]) -> str:
 
 def body_page(b: dict, besch: list[dict]) -> str:
     kind_label = "Ausschuss" if b["kind"] == "committee" else "Gremium"
-    head = (
-        crumbs(("index.html", "Gremien"), (None, b["short"]))
-        + f'<section class="card ent-head"><h1>{e(b["short"])}</h1>'
-        f'<div class="lines">{kind_label} · {n(len(b["members"]))} Mitgliedschaften in der {WP}. Wahlperiode</div></section>'  # noqa: E501
+    people = len({m["person"] for m in b["members"]})
+    current = sum(1 for m in b["members"] if m["to"] is None)
+    pills = [(f"<b>{n(current)}</b> aktuelle Mitglieder", "#mitglieder"),
+             (f"<b>{n(len(b['members']))}</b> Mitgliedschaften", None)]  # fmt: skip
+    if b["kind"] == "committee":
+        pills.append((f"<b>{n(len(besch))}</b> Drucksachen", "#drucksachen"))
+    head = crumbs(("index.html", "Gremien"), (None, b["short"])) + entity_header(
+        b["short"],
+        [f"{people} Personen in der {WP}. Wahlperiode, Vorsitz, Obleute, Mitglieder und Stellvertreter"],
+        when=kind_label,
+        pills=pills,
     )
     members = controls.scope(_stats_section(b["members"]) + _members_section(b["members"]), "Mitgliedschaften",
                              "Mitgliedschaft")  # fmt: skip
@@ -256,13 +269,21 @@ def body_page(b: dict, besch: list[dict]) -> str:
                  head=STYLE + controls.head("../"))  # fmt: skip
 
 
-def gremien_index_page(bodies: list[dict], government: bool = False) -> str:
+def gremien_index_page(bodies: list[dict], government: bool = False, seats: dict[str, int] | None = None) -> str:
     committees = [b for b in bodies if b["kind"] == "committee"]
     others = [b for b in bodies if b["kind"] != "committee"]
-    frac_rows = "".join(
-        f'<a class="row" href="../fraktionen/{TOKEN[f]}.html"><span class="t"><span class="ti">{dot(f)} {e(SHORT.get(f, f))}</span></span></a>'  # noqa: E501
-        for f in ORDER
-    )
+    seats = seats or {}
+    total = sum(seats.values()) or 1
+
+    def tile(f: str) -> str:  # a fraction as a tile in its colour: seats and share of the house (design.css .ftile)
+        k = seats.get(f, 0)
+        share = f'<span class="fs">{100 * k / total:.0f} % der Sitze</span>' if k else ""
+        bar = f'<span class="fb"><i style="width:{100 * k / total:.1f}%"></i></span>' if k else ""
+        return (f'<a class="ftile" style="--c:var(--{TOKEN[f]})" href="../fraktionen/{TOKEN[f]}.html">'
+                f'<span class="fn">{e(SHORT.get(f, f))}</span><b>{n(k)}</b><span class="fl">'
+                f'{"Mitglied" if k == 1 else "Mitglieder"}</span>{share}{bar}</a>')  # fmt: skip
+
+    frac_rows = "".join(tile(f) for f in ORDER)
     gov = ('<h2>Bundesregierung</h2><div class="rows"><a class="row" href="bundesregierung.html"><span class="t">'
            '<span class="ti">Bundesregierung</span></span></a></div>' if government else "")  # fmt: skip
 
@@ -287,7 +308,7 @@ def gremien_index_page(bodies: list[dict], government: bool = False) -> str:
     )  # fmt: skip
     body = f"""<div class="bodies"><h1>Gremien</h1>
 <p class="lead">Die Fraktionen, die Ausschüsse und Unterausschüsse und die weiteren Gremien des 21. Bundestages (Kommissionen, Delegationen, Parlamentariergruppen, Beiräte, Kuratorien und Stiftungsräte, denen der Bundestag Mitglieder entsendet), aus den Stammdaten. Jedes Gremium mit seinen Mitgliedern nach Rolle, der Zusammensetzung nach Fraktion und, bei Ausschüssen, seinen Beschlussempfehlungen. Bundesministerien sind Regierungsämter, keine Gremien des Bundestages, und stehen im jeweiligen Steckbrief unter „Regierungsämter“.</p>
-<h2>Fraktionen</h2><div class="rows">{frac_rows}</div>
+<h2>Fraktionen</h2><div class="ftiles">{frac_rows}</div>
 {gov}
 <h2>Ausschüsse und Gremien <span class="n">{n(len(bodies))}</span></h2>
 <p class="explain">Jede Kachel ist ein Gremium. Ihre Breite richtet sich nach der Zahl der aktuellen Mitglieder, eine Mindestbreite hält jeden Namen lesbar. Der Balken zeigt die Fraktionen.</p>
@@ -344,20 +365,20 @@ def fraction_page(
     women = sum(1 for m in current if m["gender"] == "weiblich")
     first = sum(1 for m in current if not any(wp < WP for wp in m["periods"]))
     age = _avg_age(current)
-    lead_rows = "".join(
-        f'<div class="row"><div class="t"><a href="../{e(x["member"]["id"])}.html">{e(x["member"]["name"])}</a>'
-        f'<div class="sub">{e(x["role"])}</div></div></div>'
-        for x in leaders
-    )  # fmt: skip
+
+    def pm(c: dict, sub: str = "", ended: bool = False) -> str:
+        chip = person_chip(c["id"], c["name"], "../", bool(c.get("photo")), sub)
+        return f'<div class="pm{" ended" if ended else ""}">{chip}</div>'
+
+    lead_rows = "".join(pm(x["member"], f'<span class="pr">{e(x["role"])}</span>') for x in leaders)
     left_f = [m for m in ch["left"] if m["fraction"] == f]
     joined_f = [m for m in ch["joined"] if m["fraction"] == f]
     moved_in = [x for x in ch["moved"] if x["to"] == f]
     moved_out = [x for x in ch["moved"] if x["from"] == f]
     member_rows = "".join(
-        f'<div class="row{" ended" if m["to"] else ""}"><div class="t"><a href="../{e(m["id"])}.html">{e(m["name"])}'
-        f'</a></div><div class="d">{_when(m["from"], m["to"])}</div></div>'
+        pm(m, f'<span class="pw">{_when(m["from"], m["to"])}</span>', bool(m["to"]))
         for m in sorted(ms_f, key=lambda m: m["name"])
-    )  # fmt: skip
+    )
     changes = []
     if left_f or joined_f or moved_in or moved_out:
         items = []
@@ -392,11 +413,13 @@ def fraction_page(
     )  # fmt: skip
 
     stats = (
-        (
-            f'<p class="explain">{n(len(current))} aktuelle Mitglieder, davon {n(women)} Frauen '
-            f"({100 * women / len(current):.0f} %) und {n(first)} zum ersten Mal im Bundestag "
-            f"({100 * first / len(current):.0f} %)" + (f", Durchschnittsalter {age:.0f} Jahre" if age else "") + "."
-            "</p>"
+        stat_tiles(
+            [
+                (n(len(current)), "aktuelle Mitglieder"),
+                (f"{100 * women / len(current):.0f} %", f"Frauen ({n(women)})"),
+                (f"{100 * first / len(current):.0f} %", f"zum ersten Mal im Bundestag ({n(first)})"),
+                *([(f"{age:.0f}", "Jahre im Durchschnitt")] if age else []),
+            ]
         )
         if current
         else '<p class="explain">Aktuell keine Mitglieder.</p>'
@@ -422,16 +445,16 @@ def fraction_page(
         else f'<p class="explain">Keine namentlichen Abstimmungen mit Liste im Datenbestand. {coh_link}.</p>'
     )
 
-    head = (
-        crumbs(("../gremien/index.html", "Gremien"), (None, "Fraktion"))
-        + f'<section class="card ent-head"><h1>{dot(f)} {e(f)}</h1>'
-        f'<div class="lines">{n(len(current))} aktuelle Mitglieder in der {WP}. Wahlperiode</div></section>'
-    )
-    members = []
+    own = [d for d in docs if f in d["groups"]]
+    pills = [(f"<b>{n(len(current))}</b> Mitglieder", "#mitglieder"), (f"<b>{n(len(speeches))}</b> Reden", "#reden"),
+             (f"<b>{n(len(own))}</b> Drucksachen", "#drucksachen")]  # fmt: skip
+    head = crumbs(("../gremien/index.html", "Gremien"), (None, "Fraktion")) + entity_header(
+        f, [f"Fraktion im {WP}. Deutschen Bundestag"], when="Fraktion", pills=pills, cls="fr"
+    ).replace('class="card ent-head fr"', f'class="card ent-head fr" style="--c:var(--{TOKEN.get(f, "frl")})"', 1)
+    members = [stats]
     if lead_rows:
-        members.append(f'<h3>Fraktionsführung</h3><div class="rows memb">{lead_rows}</div>')
-    members.append(f"<h3>Zusammensetzung</h3>{stats}")
-    members.append(f'<h3>Alle Mitglieder</h3><div class="rows memb">{member_rows}</div>')
+        members.append(f'<h3>Fraktionsführung</h3><div class="people">{lead_rows}</div>')
+    members.append(f'<h3>Alle Mitglieder</h3><div class="people compact">{member_rows}</div>')
     members += changes
     if off_rows:
         members.append(f"<h3>Ämter im Ausschuss</h3><ul>{off_rows}</ul>")
@@ -457,7 +480,6 @@ def fraction_page(
         len(ds), "Rechts die Position der Fraktion. Bei namentlichen Abstimmungen ist das die Mehrheit ihrer Stimmen, "
         "gezählt wie in den Steckbriefen, bei Handzeichen die Feststellung der Sitzungsleitung.",
     ))  # fmt: skip
-    own = [d for d in docs if f in d["groups"]]
     shown = _newest(own)
     parts.append(facet("drucksachen", "Drucksachen", ka_text + facts.drucksache_list(
         shown, "../", "drs", compact=False, limit=None, note=_more(len(shown), len(own), "Alle stehen im DIP.")),
@@ -467,7 +489,8 @@ def fraction_page(
         f"Die Fraktion {f} im 21. Deutschen Bundestag: Mitglieder, Führung, Reden, Abstimmungen und Drucksachen, "
         "mit Quelle."
     )
-    return shell(root="../", kind="p-fraction", active="bodies", title=f, desc=desc,
+    return shell(root="../", kind="p-fraction", active="bodies",
+                 title=f if f == "fraktionslos" else f"Fraktion {f}", desc=desc,
                  body=f'<div class="bodies">{"".join(parts)}</div>', data={"kind": "fraction", "name": f,
                  "token": token}, head=STYLE)  # fmt: skip
 
@@ -560,9 +583,12 @@ def write(
     if roles:
         names = {c["id"]: c["name"] for c in cards}
         (gd / "bundesregierung.html").write_text(government_page(roles, names, speeches, docs), encoding="utf-8")
-    (gd / "index.html").write_text(gremien_index_page(bodies, bool(roles)), encoding="utf-8")
-
     ms = careers.members(conn)
+    seats = Counter(m["fraction"] for m in ms if m["to"] is None)
+    (gd / "index.html").write_text(gremien_index_page(bodies, bool(roles), seats), encoding="utf-8")
+    photo = {c["id"] for c in cards if c.get("photo")}
+    for m in ms:
+        m["photo"] = m["id"] in photo
     ch = careers.changes(ms, careers.constituted(conn))
     off = careers.offices(conn, ms)
     ka_by_f = (

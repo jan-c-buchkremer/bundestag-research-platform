@@ -342,3 +342,25 @@ def test_plenum_leaves_out_notes_after_the_chair(conn):
     assert data.plenum(conn)["2"]["received"]["SPD"]["beifall"] == 0
     applause = data._applause(conn)
     assert applause["ID1-5"] == 1  # the note after his words, not the one after the chair's
+
+
+def test_hib_by_vorgang(conn):
+    assert data.hib_by_vorgang(conn) == {}  # no item yet
+    conn.execute(
+        "INSERT INTO hib_item VALUES ('1223018','784/2026','2026-07-10',21,'Mieten im Blick','Recht',"
+        "'Antrag',NULL,NULL,'Text','u','d','t')"
+    )
+    conn.execute("INSERT INTO hib_drucksache VALUES ('1223018','21/100',1)")
+    conn.execute("INSERT INTO hib_drucksache VALUES ('1223018','21/200',2)")  # named later: not its subject
+    got = data.hib_by_vorgang(conn)
+    assert set(got) == {"v1", "v2"} and len(got["v2"]) == 1  # 21/100 belongs to both; 21/200 adds nothing
+    assert got["v1"][0]["url"] == "https://www.bundestag.de/1223018" and "text" not in got["v1"][0]
+
+
+def test_radar_lead(tmp_path, monkeypatch):
+    monkeypatch.delenv("LANDSCAPE_LEAD", raising=False)
+    monkeypatch.delenv("LANDSCAPE_CLUSTERS", raising=False)
+    assert data.radar_lead() is None
+    (tmp_path / "lead.json").write_text('{"week": "2026-W46", "label": "L", "lead": {"sentences": [{"text": "A."}]}}')
+    monkeypatch.setenv("LANDSCAPE_CLUSTERS", str(tmp_path / "speech_clusters.json"))  # lead.json next to it
+    assert data.radar_lead() == {"week": "2026-W46", "label": "L", "sentences": [{"text": "A."}]}

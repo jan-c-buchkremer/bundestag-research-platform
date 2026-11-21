@@ -52,6 +52,7 @@ QUESTION_TABS = (
     ("anfragen", urls.ANFRAGEN, "Kleine und Große Anfragen"),
     ("einzelfragen", urls.EINZELFRAGEN, "Einzelfragen"),
     ("befragung", urls.BEFRAGUNGEN, "Regierungsbefragung"),
+    ("fragestunde", urls.FRAGESTUNDEN, "Fragestunde"),
 )
 ANFRAGE_TYPES = ("Kleine Anfrage", "Große Anfrage")
 EINZEL_TYPES = ("Mündliche Frage", "Schriftliche Frage")
@@ -95,6 +96,23 @@ STYLE = """<style>
 .qp .bf .who { color: var(--muted); font-size: 14px; margin-bottom: 6px; }
 .qp .bf ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
 .qp .bf ol li { margin: 0 0 4px; }
+.qp .q-list > .q-thread { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 20px 6px; margin: 0 0 14px; }
+.qp .q-thread > h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 16px; }
+.qp .q-thread > h3 .qn { color: var(--faint); font-variant-numeric: tabular-nums; }
+.qp .q-thread > h3 .to { font-weight: 400; color: var(--muted); font-size: 13.5px; }
+.qp .q-thread .q-title { margin: 2px 0 8px; font-size: 14px; }
+.qp .q-thread .q-asked { border-left: 3px solid var(--c, var(--line)); padding: 2px 0 2px 14px; margin: 10px 0;
+  font-size: 15px; line-height: 1.6; }
+.qp .q-thread .q-asked .k { font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--faint); }
+.qp .q-thread .q-asked p { margin: 6px 0; max-width: 72ch; }
+.qp .q-intro > summary { cursor: pointer; font-weight: 600; color: var(--accent); margin: 6px 0; }
+.qp .q-filter { margin: 8px 0 14px; }
+.qp .q-filter .cv { margin-bottom: 8px; }
+.qp .q-list > [hidden] { display: none; }
+.qp .bf { padding: 14px 20px; margin: 0 0 12px; }
+.qp .bf h2 { font-size: 17px; margin: 0 0 4px; }
 </style>"""
 
 
@@ -448,7 +466,9 @@ def anfrage_page(a: dict, cards: set[str]) -> str:
             (None, a["asked"]["number"] if a["asked"] else a["type"]),
         )  # fmt: skip
         + f'<article data-pagefind-body>{marks}<span hidden data-pagefind-meta="title">{e(a["title"])}</span>'
-        + head
+        + (f'<span hidden data-pagefind-meta="date:{e(a["date"])}"></span>' if a["date"] else "")
+        # the title is indexed once (the span above); the head's lines stay out of the excerpts
+        + f"<div data-pagefind-ignore>{head}</div>"
         + _gap(a["status"], pdf)
         + "".join(parts)
         + "</article>"
@@ -618,30 +638,182 @@ def _questioned(b: dict, cards: set[str], root: str) -> str:
     return "; ".join(f"{_person(p, cards, root)}, {e(p['office'])}" for p in b["questioned"]) or "nicht erkannt"
 
 
+def _short_name(name: str) -> str:
+    return name.split(",")[0].split(" (")[0].strip()
+
+
+def threads_html(threads: list[dict], cards: set[str], root: str, explain: str) -> str:
+    """The questions of a Regierungsbefragung or a Fragestunde as one filtered list: each thread (`asker`, the
+    `turns`, optionally the printed question as `asked` and its page as `href`) a card with its number, who asked
+    and who answered. Filters: the asker's Fraktion, who answered, words anywhere in the thread."""
+    fr: Counter = Counter()
+    by: Counter = Counter()
+    label: dict[str, str] = {}
+    cards_html = []
+    for i, th in enumerate(threads, 1):
+        ask = th["asker"] or {}
+        group = ask.get("group")
+        tok = TOKEN.get(group or "", "")
+        answered = list(dict.fromkeys(_short_name(t["name"]) for t in th["turns"] if t["role"] == "antwort"))
+        slugs = [urls.slug(a) for a in answered]
+        label.update(zip(slugs, answered, strict=True))
+        fr[tok] += 1 if tok else 0
+        by.update(slugs)
+        who = _person(ask, cards, root) if ask.get("name") else "unbekannt"
+        to = f' <span class="to">an {e(", ".join(answered))}</span>' if answered else ""
+        title = (f'<div class="q-title"><a href="{e(th["href"])}">{e(th["title"])}</a></div>'
+                 if th.get("href") else "")  # fmt: skip
+        asked = ""
+        if th.get("asked"):
+            colour = TOKEN.get(group or "", "reg")
+            asked = (f'<div class="q-asked" style="--c:var(--{colour})"><div class="k">Frage, schriftlich eingereicht'
+                     f"</div>{_text(th['asked'])}</div>")  # fmt: skip
+        cards_html.append(
+            f'<section class="q-thread" id="frage-{i}" data-fraktion="{e(tok)}" data-befragt="{e(" ".join(slugs))}">'
+            f'<h3><span class="qn">{i}.</span> {dot(group)}{who}'
+            f"{f' <span class=sub>{e(SHORT.get(group, group))}</span>' if group else ''}{to}</h3>"
+            + title
+            + asked
+            + "".join(turn_html(t, cards, root) for t in th["turns"])
+            + "</section>"
+        )
+    names = {t: f for f, t in TOKEN.items()}
+    chips = controls.block(
+        "Fraktion der fragenden Person",
+        controls.chips(
+            "fraktion", [(t, SHORT.get(names[t], names[t]), k, t) for t, k in fr.most_common() if t], "Fraktion"
+        ),
+    )
+    if len(by) > 1:
+        chips += controls.block("Geantwortet hat", controls.sized_chips(
+            "befragt", [(s, label[s], k) for s, k in by.most_common()], "Geantwortet hat"))  # fmt: skip
+    body = (f'<div class="q-filter">{controls.toolbar("Wörter in Frage oder Antwort …")}{chips}</div>'
+            + controls.rows(cards_html, "fragen-liste", "Keine Fragen erkannt.", row=".q-thread", cls="q-list")
+            .replace(f'data-limit="{controls.LIMIT}"', 'data-limit="200"'))  # fmt: skip
+    return (
+        f'<section class="facet" id="fragen"><h2>Fragen <span class="n">{n(len(threads))}</span></h2>'
+        f'<p class="explain">{explain}</p>{controls.scope(body, "Fragen", "Frage")}</section>'
+    )
+
+
 def befragung_page(b: dict, cards: set[str]) -> str:
     root = "../../"
-    parts = []
+    intro = ""
     if b["intro"]:
-        parts.append('<section class="q-thread"><h2>Einleitung</h2>'
-                     + "".join(turn_html(t, cards, root) for t in b["intro"]) + "</section>")  # fmt: skip
-    for i, th in enumerate(b["threads"], 1):
-        ask = th[0]
-        parts.append(f'<section class="q-thread" id="frage-{i}"><h3>{i}. Frage von {e(ask["name"])}'
-                     f'{f" ({e(SHORT.get(ask['group'], ask['group']))})" if ask["group"] else ""}</h3>'
-                     + "".join(turn_html(t, cards, root) for t in th) + "</section>")  # fmt: skip
+        who = ", ".join(dict.fromkeys(_short_name(t["name"]) for t in b["intro"]))
+        intro = (f'<section class="facet" id="einleitung"><h2>Einleitung</h2><details class="q-intro">'
+                 f"<summary>Die einleitenden Worte von {e(who)}</summary>"
+                 + "".join(turn_html(t, cards, root) for t in b["intro"]) + "</details></section>")  # fmt: skip
+    threads = [{"asker": th[0], "turns": th} for th in b["threads"]]
+    fr = Counter(th[0]["group"] for th in b["threads"] if th[0]["group"])
     lines = [f'<span class="k">Befragt</span> {_questioned(b, cards, root)}',
-             f'<span class="k">Fragen</span> {n(len(b["threads"]))}',
              f'<span class="k">Sitzung</span> <a href="{root}{e(urls.sitting(b["sitting"], b["position"]))}">'
              f'{b["number"]}. Sitzung</a>']  # fmt: skip
+    pills = [(f"{n(len(b['threads']))} Fragen", "#fragen")] + [
+        (f"{SHORT.get(f, f)} {k}", None) for f, k in sorted(fr.items(), key=lambda x: -x[1])
+    ]
     title = f"Regierungsbefragung am {long_date(b['date'])}"
-    head = entity_header(title, lines, when="Befragung der Bundesregierung", cls="sp-head")
+    head = entity_header(title, lines, when="Befragung der Bundesregierung", cls="sp-head", pills=pills)
     body = (crumbs((f"{root}{urls.BEFRAGUNGEN}", "Regierungsbefragung"), (None, short_date(b["date"])))
-            + head + '<p class="explain">Jede Frage mit ihrer Antwort, den Nachfragen der fragenden Person und den '
-            "Zusatzfragen anderer Abgeordneter, in der Reihenfolge des Protokolls. Welche Beiträge zu einer Frage "
-            "gehören, folgt aus den Worten der Sitzungsleitung.</p>" + "".join(parts))  # fmt: skip
+            + head + intro + threads_html(
+                threads, cards, root, "Jede Frage mit ihrer Antwort, den Nachfragen der fragenden Person und den "
+                "Zusatzfragen anderer Abgeordneter, in der Reihenfolge des Protokolls. Welche Beiträge zu einer Frage "
+                "gehören, folgt aus den Worten der Sitzungsleitung."))  # fmt: skip
     return _page(title, "befragung", root, body,
                  f"{title}: {', '.join(p['name'] for p in b['questioned'])}. Alle Fragen und Antworten im Wortlaut.",
                  "p-question")  # fmt: skip
+
+
+def fragestunden(conn: sqlite3.Connection, ef: list[dict]) -> list[dict]:
+    """Every Fragestunde, newest first: its threads in protocol order, each with the Mündliche Frage it answers
+    where the protocol names it (`question_text.thread_id`): the printed wording, the asker (with card and Fraktion
+    from the asker's own follow-ups in the thread) and the question's page when the store links its Vorgang."""
+    by_vorgang = {q["frage"]["id"]: q for q in ef if q["frage"]}
+    asked: dict[str, dict] = {}
+    for r in conn.execute("SELECT * FROM question_text WHERE part = 'frage' AND thread_id IS NOT NULL ORDER BY id"):
+        asked.setdefault(r["thread_id"], dict(r))
+    sittings: dict[str, dict] = {}
+    for t in _turns(conn, "s.kind = 'fragestunde'", ()):
+        s = sittings.setdefault(t["sitting"], {"sitting": t["sitting"], "date": t["date"], "threads": {}})
+        if t["thread"]:
+            s["threads"].setdefault(t["thread"], []).append(t)
+    numbers = {r["id"]: r["number"] for r in conn.execute("SELECT id, number FROM sitting WHERE wahlperiode = ?",
+                                                          (WP,))}  # fmt: skip
+    out = []
+    for s in sittings.values():
+        threads = []
+        for tid, turns in s["threads"].items():
+            a = asked.get(tid)
+            q = by_vorgang.get(a["id"]) if a else None
+            asker = None
+            if a and a["name"]:
+                own = next((t for t in turns if t["role"] == "nachfrage" and _short_name(t["name"]) == a["name"]), None)
+                asker = ({"person": own["person"], "name": a["name"], "group": own["group"]} if own
+                         else {"person": None, "name": a["name"], "group": None})  # fmt: skip
+            threads.append({"asker": asker, "turns": turns, "title": q["title"] if q else "",
+                            "href": f"../../{urls.frage(q['id'])}" if q else None,
+                            "asked": a["text"] if a else None})  # fmt: skip
+        out.append({**s, "number": numbers.get(s["sitting"]), "threads": threads})
+    out.sort(key=lambda s: s["date"], reverse=True)
+    return out
+
+
+def fragestunde_page(f: dict, cards: set[str]) -> str:
+    root = "../../"
+    fr = Counter((th["asker"] or {}).get("group") for th in f["threads"])
+    fr.pop(None, None)
+    pills = [(f"{n(len(f['threads']))} Fragen", "#fragen")] + [
+        (f"{SHORT.get(g, g)} {k}", None) for g, k in fr.most_common()
+    ]
+    lines = [f'<span class="k">Sitzung</span> <a href="{root}{e(urls.sitting(f["sitting"]))}">'
+             f'{f["number"] or ""}. Sitzung</a>']  # fmt: skip
+    title = f"Fragestunde am {long_date(f['date'])}"
+    head = entity_header(title, lines, when="Fragestunde", cls="sp-head", pills=pills)
+    body = (
+        crumbs((f"{root}{urls.FRAGESTUNDEN}", "Fragestunde"), (None, short_date(f["date"])))
+        + head
+        + threads_html(
+            f["threads"],
+            cards,
+            root,
+            "Jede Mündliche Frage, die in dieser Fragestunde aufgerufen wurde: die "
+            "eingereichte Frage, die Antwort der Bundesregierung und die Nachfragen, in der Reihenfolge des "
+            "Protokolls. Nachfragen stellt die fragende Person, Zusatzfragen andere Abgeordnete. Fragen, die "
+            "die Fragestunde nicht erreicht, werden schriftlich beantwortet und stehen unter Einzelfragen.",
+        )
+    )
+    return _page(title, "fragestunde", root, body, f"{title}: alle Mündlichen Fragen mit Antwort und Nachfragen.",
+                 "p-question")  # fmt: skip
+
+
+def fragestunden_page(items: list[dict], cards: set[str]) -> str:
+    root = "../"
+    entries = []
+    for f in items:
+        fr = Counter((th["asker"] or {}).get("group") for th in f["threads"])
+        fr.pop(None, None)
+        by = " · ".join(f"{dot(g)}{e(SHORT.get(g, g))} {k}" for g, k in fr.most_common())
+        href = urls.fragestunde(f["sitting"]).removeprefix("regierung/")
+        answered = list(dict.fromkeys(_short_name(t["name"]) for th in f["threads"] for t in th["turns"]
+                                      if t["role"] == "antwort"))  # fmt: skip
+        entries.append(
+            f'<article class="bf card"><h2><a href="{e(href)}">{e(long_date(f["date"]))}</a></h2>'
+            f'<div class="who">{" · ".join(x for x in (f"{n(len(f['threads']))} Fragen", by) if x)}</div>'
+            f'<div class="who">Geantwortet: {e(", ".join(answered[:6]))}'
+            f"{f' und {len(answered) - 6} weitere' if len(answered) > 6 else ''}</div></article>"
+        )
+    body = (
+        '<h1>Fragestunde</h1><p class="lead">In der Fragestunde (§ 105 GO-BT, Anlage 4) beantwortet die '
+        "Bundesregierung Mündliche Fragen, die Abgeordnete vorher eingereicht haben.</p>"
+        '<p class="explain">Jede Fragestunde des 21. Bundestages, die neueste zuerst. Ein Klick führt zu allen Fragen '
+        "mit Antwort und Nachfragen im Wortlaut. Fragen, die in der Zeit nicht aufgerufen werden, beantwortet die "
+        "Bundesregierung schriftlich. Sie stehen mit allen anderen Mündlichen Fragen unter Einzelfragen.</p>"
+        + "".join(entries)
+    )
+    return _page("Fragestunde", "fragestunde", root, body,
+                 "Jede Fragestunde des 21. Bundestages: alle aufgerufenen Mündlichen Fragen mit Antwort und "
+                 "Nachfragen.",
+                 "p-questions")  # fmt: skip
 
 
 def befragungen_page(items: list[dict], cards: set[str]) -> str:
@@ -655,10 +827,10 @@ def befragungen_page(items: list[dict], cards: set[str]) -> str:
                      f'{f" ({e(SHORT.get(th[0]['group'], th[0]['group']))})" if th[0]["group"] else ""}: '
                      f'{e(_lead(th[0]["text"]))}</li>' for i, th in enumerate(b["threads"], 1))  # fmt: skip
         entries.append(
-            f'<section class="bf card"><h2><a href="{e(href)}">{e(long_date(b["date"]))}</a></h2>'
+            f'<article class="bf card"><h2><a href="{e(href)}">{e(long_date(b["date"]))}</a></h2>'
             f'<div class="who">Befragt: {_questioned(b, cards, root)}</div>'
             f'<div class="who">{n(len(b["threads"]))} Fragen · {by}</div>'
-            f"<details><summary>Die Fragen</summary><ol>{qs}</ol></details></section>"
+            f"<details><summary>Die Fragen</summary><ol>{qs}</ol></details></article>"
         )
     body = (
         '<h1>Regierungsbefragung</h1><p class="lead">In der Befragung der Bundesregierung (§ 106 Abs. 2 GO-BT) '
@@ -715,4 +887,9 @@ def write(conn: sqlite3.Connection, out: Path, cards: set[str], sitting_dates: l
     for b in bf:
         (out / urls.befragung(b["sitting"])).write_text(befragung_page(b, cards), encoding="utf-8")
     (out / urls.BEFRAGUNGEN).write_text(befragungen_page(bf, cards), encoding="utf-8")
-    return {"anfragen": len(af), "einzelfragen": len(ef), "befragungen": len(bf)}
+    fs = fragestunden(conn, ef)
+    (d / "fragestunde").mkdir(parents=True, exist_ok=True)
+    for f in fs:
+        (out / urls.fragestunde(f["sitting"])).write_text(fragestunde_page(f, cards), encoding="utf-8")
+    (out / urls.FRAGESTUNDEN).write_text(fragestunden_page(fs, cards), encoding="utf-8")
+    return {"anfragen": len(af), "einzelfragen": len(ef), "befragungen": len(bf), "fragestunden": len(fs)}

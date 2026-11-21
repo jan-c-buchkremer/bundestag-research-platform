@@ -90,6 +90,13 @@ carries both colours. The violet Radar entry closes the top bar on every page. R
 `shell.css` and `nav.js` and write the same header markup (bundestag-radar `shell.py`). On Radar pages `--accent` is
 violet and links into Research carry `a.ev` (blue).
 
+Research pages share one design language with the Radar (`design.css`, loaded after `cards.css`, 2026-11): a page
+head card with an eyebrow line, a large title and blue pills that jump to its sections; section headings at one size
+with their count as a pill; explanations behind an info button next to their heading (`nav.js` moves a long lead or a
+`p.explain` there, a lone explanation stays visible); people as cards with their photo, role and fraction chip
+(`ui.person_chip`, `ui.frac_chip`); big numbers as stat tiles (`ui.stat_tiles`). Blue stays Research's colour; violet
+appears only on Radar elements.
+
 ## URLs
 
 One domain, split by path; the two builds never write the same path and `release.sh` merges them.

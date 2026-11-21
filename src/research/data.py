@@ -395,6 +395,32 @@ def kind_filter(conn: sqlite3.Connection, alias: str = "s") -> str:
     return f"AND {alias}.kind != 'fragestunde'" if has_speech_kind(conn) else ""
 
 
+HIB_URL = "https://www.bundestag.de/{}"  # the short link the Parlamentsnachrichten ask for
+
+
+def hib_by_vorgang(conn: sqlite3.Connection) -> dict[str, list[dict]]:
+    """The hib items („heute im bundestag“) of each Vorgang, newest first: {vorgang id: [{id, date, title, kind,
+    ressort, url}]}, joined over the first Drucksache an item names: its subject. Later ones are often other motions of
+    the same debate or a question an answer refers to (2 in 5 items name more than one), and would put the item under
+    the wrong Vorgang. Title, kind and the short link only: the text is not for display (the Parlamentsnachrichten's
+    terms, foundation design.md). Empty without the hib tables."""
+    if not has_table(conn, "hib_item") or not has_table(conn, "hib_drucksache"):
+        return {}
+    rows = conn.execute(
+        """SELECT DISTINCT vd.vorgang_id, h.id, h.date, h.title, h.kind, h.ressort
+           FROM hib_item h JOIN hib_drucksache hd ON hd.hib_id = h.id
+           JOIN drucksache d ON d.number = hd.drucksache_number
+           JOIN vorgang_drucksache vd ON vd.drucksache_id = d.id
+           WHERE h.wahlperiode = ? AND hd.position = 1 ORDER BY h.date DESC, h.id DESC""",
+        (WP,),
+    )
+    out: dict[str, list[dict]] = defaultdict(list)
+    for vid, hid, date, title, kind, ressort in rows:
+        out[str(vid)].append({"id": hid, "date": date, "title": title, "kind": kind, "ressort": ressort,
+                              "url": HIB_URL.format(hid)})  # fmt: skip
+    return dict(out)
+
+
 def has_table(conn: sqlite3.Connection, name: str) -> bool:
     return conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (name,)).fetchone() is not None
 
@@ -1285,6 +1311,26 @@ def sittings(conn: sqlite3.Connection, decided: list[dict] | None = None) -> lis
             }
         )  # fmt: skip
     return out
+
+
+def radar_lead(path: str | os.PathLike | None = None) -> dict | None:
+    """The Radar's generated week summary („Die Woche im Bundestag“, `lead.json`, one week): {week, label, lead:
+    {sentences: [{text, paragraph}]}}. Path in LANDSCAPE_LEAD, else next to LANDSCAPE_CLUSTERS (the Radar writes both
+    into its output directory). None when there is none: the week pages then link the Radar without its text."""
+    path = path or os.environ.get("LANDSCAPE_LEAD")
+    if not path and os.environ.get("LANDSCAPE_CLUSTERS"):
+        path = Path(os.environ["LANDSCAPE_CLUSTERS"]).with_name("lead.json")
+    if not path or not Path(path).is_file():
+        return None
+    try:
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as err:
+        print(f"{path}: not readable ({err}), week pages without the Radar's summary")
+        return None
+    sentences = ((raw.get("lead") or {}).get("sentences")) or []
+    if not raw.get("week") or not sentences:
+        return None
+    return {"week": raw["week"], "label": raw.get("label") or "", "sentences": sentences}
 
 
 def speech_clusters(path: str | os.PathLike | None = None) -> dict[str, dict]:

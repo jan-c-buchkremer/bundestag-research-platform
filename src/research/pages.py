@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from research import controls, facts, urls
-from research.ui import FOOTER, LANDSCAPE, RADAR_ICON, SITTING_TABS, crumbs, e, long_date, n, shell, short_date, subtabs
+from research.ui import FOOTER, LANDSCAPE, RADAR_ICON, SITTING_TABS, crumbs, e, long_date, n, shell, subtabs
 
 TOPICS = 5  # clusters under "Themen"
 
@@ -36,16 +36,16 @@ def vote_page(d: dict, members: list[list] | None) -> str:
         where.append(f'<a href="../{e(urls.sitting(d["sitting"]))}">{e(num)}. Sitzung</a>')
     parts = [
         crumbs(("index.html", "Abstimmungen"), (None, "namentlich" if rc else "per Handzeichen")),
-        f'<div class="when">{" · ".join(where)} {kind}</div><h1 class="vh">{e(d["title"])}</h1>',
+        f'<section class="card ent-head vote-head"><div class="when">{" · ".join(where)}</div>'
+        f'<h1 class="vh">{e(d["title"])}</h1><div class="lines">{kind}</div></section>',
         facts.decision(d, "../", point=True, detail=True, members=members, when=False),
     ]
     vs = d.get("vorgaenge") or []
     if vs:
-        links = "".join(
-            f'<li><a href="../{e(urls.vorgang(v))}">{e(d["vorgang_titles"].get(v, v))}</a></li>' for v in vs
-        )
-        parts.append(f'<h2>Vorgänge</h2><p class="explain">Diese Abstimmung betrifft Drucksachen mehrerer Vorgänge. '
-                     f"Jeder führt sie in seinem Ablauf.</p><ul>{links}</ul>")  # fmt: skip
+        links = "".join(f'<a href="../{e(urls.vorgang(v))}">{e(d["vorgang_titles"].get(v, v))}</a>' for v in vs)
+        parts.append(f'<h2>Vorgänge <span class="n">{len(vs)}</span></h2><p class="explain">Diese Abstimmung betrifft '
+                     "Drucksachen mehrerer Vorgänge. Jeder führt sie in seinem Ablauf.</p>"
+                     f'<div class="vlist">{links}</div>')  # fmt: skip
     parts.append(f"<footer>{FOOTER}</footer>")
     desc = (f"{'Namentliche Abstimmung' if rc else 'Abstimmung per Handzeichen'} im Bundestag am "
             f"{long_date(d['date'])}: {d['title']} – {d['result'] or 'ohne Ergebnis'}.")  # fmt: skip
@@ -125,7 +125,8 @@ def sitting_page(s: dict, clusters: dict[str, dict] | None = None) -> str:
     if n_dec:
         summary.append(f"{n_dec} Beschlüsse" + (f", davon {n_rc} namentlich" if n_rc else ""))
     toc = "".join(
-        f'<a href="#top-{i["position"]}"><span class="lbl">{e(i["label"])}</span> {e(i["title"])}</a>'
+        f'<a href="#top-{i["position"]}"><span class="lbl">{e(i["label"])}</span> '
+        f'<span class="tt">{e(i["title"])}</span></a>'
         for i in s["items"]
     )
     head = f"""{crumbs(("index.html", "21. Wahlperiode"), (f"../{urls.week(s['week'])}", week_label(s["week"])), (None, f"{s['number']}. Sitzung"))}
@@ -141,7 +142,7 @@ def sitting_page(s: dict, clusters: dict[str, dict] | None = None) -> str:
     items = "".join(agenda_item(i, s, clusters or {}) for i in s["items"])
     body = f"{head}{items}<footer>{FOOTER}</footer>"
     desc = f"{s['number']}. Sitzung des 21. Deutschen Bundestages am {long_date(s['date'])}: Tagesordnung, Reden und Beschlüsse."  # noqa: E501
-    title = f"{s['number']}. Sitzung, {short_date(s['date'])}"
+    title = f"{s['number']}. Sitzung am {long_date(s['date'])}"
     data = {"kind": "sitting", "id": s["id"]}
     head = facts.NOSCRIPT if any(len(i["speeches"]) > facts.SHOWN for i in s["items"]) else ""
     return shell(root="../", kind="p-sitting", active="sittings", title=title, desc=desc, body=body, data=data,

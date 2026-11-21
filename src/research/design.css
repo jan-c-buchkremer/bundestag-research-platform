@@ -1,0 +1,274 @@
+/* The design language of the site (2026-11), on top of shell.css and cards.css: the forms the Radar's start page
+   introduced (big bold headings, pills for what a unit holds, explanations behind an info button, tinted bands),
+   in Research's blue. The Radar's violet stays for Radar elements only (docs/architecture.md, "Telling Radar
+   apart"). Two versions while they are compared: A (calm, the default) and B (bolder), chosen by
+   html[data-design] (page.html's head script; the switch shows outside plenar-radar.de). */
+
+:root {
+  --research-ink: #1d4ed8; --research-line: #c7d7fb;
+  --head-xl: 32px; --head-l: 20px;
+}
+
+/* ---- width: lists and charts get the room the Radar's pages have; running text keeps a reading measure */
+main { max-width: 1040px; }
+.explain, .card .lines, .facet > p, .tab > p { max-width: 720px; }
+
+/* ---- the page head (ui.entity_header, the MdB card, the index pages' h1) */
+.ent-head .when, .card .when { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--research); margin-bottom: 6px; }
+.ent-head h1, .card h1, main > h1, h1.vh, .p-vote .card h1, .p-sitting .card h1 { font-size: var(--head-xl); font-weight: 800; line-height: 1.15; letter-spacing: -.025em; }
+.ent-head h1 { margin: 2px 0 8px; }
+.ent-head .lines { font-size: 14px; }
+.ent-head .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ent-head .links a { display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 12.5px; font-weight: 600; }
+.ent-head .links a:hover { background: var(--research); color: #fff; text-decoration: none; }
+/* what a page holds, as pills under its head (ui.unit_pills) */
+.utags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+.utag { display: inline-flex; align-items: baseline; gap: 4px; font-size: 12px; font-weight: 600; color: var(--research-ink); background: var(--research-soft); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.utag b { font-weight: 800; }
+a.utag:hover { background: var(--research); color: #fff; text-decoration: none; }
+.crumbs { font-size: 12.5px; gap: 4px; }
+.crumbs a { font-weight: 600; }
+
+/* ---- section headings: one size and weight on every page; the count is a pill */
+.tab h2, .facet h2, body:not(.p-home) main section:not(.wk-radar) > h2, .chart > h2 { font-size: var(--head-l); font-weight: 750; letter-spacing: -.015em; text-transform: none; color: var(--text); margin: 34px 0 12px; line-height: 1.3; }
+.tab h2:first-child { margin-top: 6px; }
+.tab h2 .n, .facet h2 .n { display: inline-block; vertical-align: .14em; margin-left: 8px; padding: 1px 9px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 12px; font-weight: 700; letter-spacing: 0; }
+.facet h3, .tab h3 { font-size: 15px; font-weight: 700; letter-spacing: -.005em; }
+.cv-t { font-size: 13.5px; font-weight: 700; letter-spacing: -.005em; text-transform: none; color: var(--text); }
+/* small labels inside cards (Fraktion, Ausschüsse, Zuletzt im Plenum …) */
+.committees .k, .last .k, .card .lines .k, .top .k, .vstats .k, .pipe-end .k, .govbox .k { color: var(--muted); }
+
+/* ---- the info button (as on the Radar, shell.py INFO_CSS): an explanation behind an "i"; nav.js moves every
+   p.explain that follows a heading into one, so without JavaScript the text stays where it was */
+.info { display: inline-block; vertical-align: .14em; margin-left: 8px; line-height: 1; font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+.info-b { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid #d4d4d8; background: #fff; color: var(--muted); font: italic 600 11px/16px Georgia, serif; cursor: pointer; text-align: center; }
+.info-b:hover, .info.pinned .info-b { border-color: var(--research); color: var(--research); }
+.info.pinned .info-b { background: var(--research-soft); }
+.info-t { display: none; position: fixed; z-index: 60; width: min(400px, calc(100vw - 24px)); padding: 11px 13px; border-radius: 10px; background: #fff; border: 1px solid #e4e4e7; box-shadow: 0 8px 24px rgba(17,24,39,.14); color: var(--text); font: 400 13px/1.55 Inter, system-ui, sans-serif; text-align: left; white-space: normal; max-height: min(60vh, 440px); overflow-y: auto; overscroll-behavior: contain; }
+.info-t p { margin: 0 0 8px; } .info-t p:last-child { margin: 0; }
+.info:hover .info-t, .info-b:focus-visible + .info-t, .info.pinned .info-t { display: block; }
+.mode-radar .info-b:hover, .mode-radar .info.pinned .info-b { border-color: var(--radar); color: var(--radar); }
+
+/* ---- tabs and sub-tabs: the current one in the accent */
+nav.tabs a.on { background: var(--research-soft); color: var(--research-ink); box-shadow: none; font-weight: 600; }
+nav.tabs a.on .n { color: var(--research-ink); opacity: .7; }
+.tabs.sub .tabs-in { gap: 6px; }
+.tabs.sub a { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 13px; }
+.tabs.sub a.on { border-color: var(--research); background: var(--research); color: #fff; }
+.tabs.sub a:hover:not(.on) { border-color: var(--research-line); background: var(--card); }
+
+/* ---- cards, lists, tags */
+.card, .cv, .rows { border-radius: 14px; }
+.rows .row:hover, .rows > .sp:hover, .rows > .dec:hover { background: #fafbff; }
+.tag { border: 1px solid var(--line); background: var(--card); font-weight: 600; }
+.badge.ref { font-weight: 600; }
+.more { font-weight: 600; }
+.ctl-bar .reset, .zx { border-radius: 999px; font-weight: 600; }
+
+/* ---- people: a face next to every name in member lists (ui.person_chip) */
+.pc { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pc .av { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--bg) center 22% / cover no-repeat; border: 1px solid var(--line); display: grid; place-items: center; color: var(--muted); font-size: 11.5px; font-weight: 700; }
+.pc .av:hover { text-decoration: none; border-color: var(--research); }
+.pc .pt { display: flex; flex-direction: column; min-width: 0; }
+.pc .pn { color: var(--text); font-weight: 600; line-height: 1.3; }
+.pc .pn:hover { color: var(--research); text-decoration: none; }
+.pc .pf { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); margin-top: 1px; }
+.pc .pmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.pc .pw { font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.fchip { display: inline-flex; align-items: center; gap: 5px; padding: 0 8px 0 6px; border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--text); background: color-mix(in srgb, var(--c, var(--faint)) 13%, var(--card)); white-space: nowrap; line-height: 1.75; }
+.fchip .dot { width: 7px; height: 7px; background: var(--c, var(--faint)); }
+a.fchip:hover { text-decoration: none; background: color-mix(in srgb, var(--c, var(--faint)) 24%, var(--card)); }
+/* a member list as a grid of people (bodies.py): face, name, role, fraction, since when */
+.people { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 8px; }
+.people .pm { display: block; padding: 11px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.people .pm:hover { border-color: var(--research-line); background: var(--card); }
+.people .pm.ended { opacity: .6; }
+.people .pm[hidden] { display: none; }
+.pgroup { display: flex; align-items: baseline; gap: 8px; margin: 22px 0 10px; font-size: 15px; font-weight: 700; }
+.pgroup .n { padding: 0 8px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 12px; font-weight: 700; }
+.lead { font-size: 15px; color: var(--text); max-width: 720px; }
+
+/* a speech's row: the fraction as a chip by the name; Text, Themenlandschaft, Protokoll as small pill links */
+.sp .nm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.sp .go { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.sp .go a { padding: 1px 9px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.sp .go a:hover { background: var(--research); color: #fff; text-decoration: none; }
+.sp .go a.rl { background: var(--radar-soft); color: var(--radar-ink); }
+.sp .go a.rl:hover { background: var(--radar); color: #fff; }
+
+/* a Vorgang's timeline (procedures.py): each step's phase as a pill in its own tint; the Bundesrat's steps warm as
+   their dots, the Verkündung dark: the end of the way */
+main ol.tl .d, main .bills ol.tl .d { font-weight: 600; color: var(--text); }
+main ol.tl .ph, main .bills ol.tl .ph { display: inline-block; margin: 0 8px 0 6px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .01em; text-transform: none; line-height: 1.75; background: #eef2f7; color: #334155; vertical-align: .05em; }
+ol.tl > li.p-Eingebracht .ph { background: var(--research-soft); color: var(--research-ink); }
+ol.tl > li.p-Beratung .ph { background: #e0f2fe; color: #075985; }
+ol.tl > li.p-Ausschuss .ph { background: #e6f6f3; color: #115e59; }
+ol.tl > li.p-Abstimmung .ph { background: #e3f3e7; color: #1f6b35; }
+ol.tl > li.p-Bundesrat .ph { background: #fdecd8; color: #9a3412; }
+ol.tl > li.p-Verkündung .ph { background: #1f2937; color: #fff; }
+
+/* a Sitzung (pages.py) and an Abstimmung: section headings as everywhere, the TOP numbers as pills */
+.mode-research main > h2, .mode-research .bodies > h2 { font-size: var(--head-l); font-weight: 750; letter-spacing: -.015em; text-transform: none; color: var(--text); margin: 34px 0 12px; }
+.toc a { display: flex; gap: 10px; align-items: baseline; padding: 5px 16px; }
+.toc a .lbl, .top h3 .lbl { flex: none; display: inline-block; min-width: 54px; padding: 0 8px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 11.5px; font-weight: 700; line-height: 1.8; text-align: center; vertical-align: .12em; }
+.toc a .tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top h3 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.top h3 .lbl { min-width: 0; margin-right: 8px; }
+.top .speeches > .k { display: block; margin: 16px 0 6px; font-size: 14px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text); }
+.top .speeches > .k .n { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 11.5px; font-weight: 700; }
+
+/* the Gremien index: the fractions as tiles in their colour */
+.ftiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ftile { display: flex; flex-direction: column; padding: 12px 14px 10px; border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 12px; background: var(--card); color: var(--text); }
+.ftile:hover { text-decoration: none; border-color: var(--c); }
+.ftile .fn { font-weight: 700; font-size: 14px; }
+.ftile b { font-size: 28px; font-weight: 800; letter-spacing: -.025em; line-height: 1.15; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.ftile .fl, .ftile .fs { color: var(--muted); font-size: 12px; }
+.ftile .fb { display: block; height: 4px; margin-top: 8px; border-radius: 2px; background: #eef0f3; overflow: hidden; }
+.ftile .fb i { display: block; height: 100%; background: var(--c); }
+.p-vote main > .vote-head { margin-bottom: 18px; }
+.p-vote main > .vote-head .lines { margin-top: 8px; }
+
+.vlist { display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.vlist a { padding: 9px 16px; color: var(--text); font-size: 14px; line-height: 1.45; border-top: 1px solid var(--line); }
+.vlist a:first-child { border-top: 0; }
+.vlist a:hover { background: var(--research-soft); color: var(--research-ink); text-decoration: none; }
+.mode-research main > h2 .n, .mode-research .bodies > h2 .n { display: inline-block; vertical-align: .14em; margin-left: 8px; padding: 1px 9px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 12px; font-weight: 700; }
+.dec .ti, .top h3, .vlist a { overflow-wrap: break-word; hyphens: auto; }
+@media (max-width: 560px) { .dec .ti, .top h3, .vlist a, .ent-head h1 { overflow-wrap: anywhere; } }
+
+/* big numbers with a label, as on the front page (ui.stat_tiles) */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; margin: 4px 0 18px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.stat b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { display: block; margin-top: 3px; color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.people.compact { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.people.compact .pm { padding: 8px 10px; }
+.people.compact .pc .av { width: 30px; height: 30px; }
+/* a fraction's page: its colour on the head */
+.ent-head.fr { border-top: 4px solid var(--c); }
+.ent-head.fr h1::before { content: ""; display: inline-block; width: 16px; height: 16px; margin-right: 12px; border-radius: 50%; background: var(--c); vertical-align: .08em; }
+
+/* hib items (facts.hib_row): the kind as a small pill, the title out to bundestag.de */
+.row.hib .t .hk { display: inline-block; margin-right: 8px; padding: 0 8px; border-radius: 999px; background: #eef2f7; color: #334155; font-size: 11px; font-weight: 700; line-height: 1.8; vertical-align: .08em; }
+.row.hib .t a.ti { font-weight: 600; }
+
+/* a Sitzungswoche (weekly.py): the Radar's box, the sittings as cards, the overview as four tiles */
+.wk-radar { margin: 18px 0 8px; padding: 18px 20px; border: 1px solid var(--radar-line); border-radius: 16px; background: linear-gradient(165deg, #f4edff, #fbf9ff 55%, #fff); }
+.wk-radar .wr-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wk-radar h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.015em; color: var(--radar-ink); }
+.wk-radar .wr-auto { padding: 1px 9px; border-radius: 999px; background: var(--radar-soft); color: var(--radar-ink); font-size: 11.5px; font-weight: 700; }
+.wk-radar > p { margin: 6px 0 0; color: var(--muted); font-size: 14px; max-width: 720px; }
+.wk-radar .wr-lead { margin: 12px 0 0; padding: 14px 18px; border-radius: 12px; background: #fff; border: 1px solid var(--radar-line); border-left: 4px solid var(--radar); }
+.wk-radar .wr-lead p { margin: 0 0 10px; font-size: 15px; line-height: 1.6; max-width: 760px; }
+.wk-radar .wr-lead p:last-child { margin-bottom: 0; }
+.wk-radar .wr-rest summary { cursor: pointer; color: var(--radar-ink); font-weight: 650; font-size: 14px; }
+.wk-radar .wr-rest[open] summary { margin-bottom: 10px; }
+.wk-radar .wr-note { font-size: 12px; color: var(--faint); margin: 8px 0 0; }
+.wk-radar .wr-more { font-size: 13px; margin: 8px 0 0; color: var(--muted); }
+.wk-radar .wr-go { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; font-size: 14px; font-weight: 650; }
+.wk-radar .wr-btn { padding: 8px 16px; border-radius: 999px; background: var(--radar); color: #fff; box-shadow: 0 8px 18px -10px rgba(109, 40, 217, .7); }
+.wk-radar .wr-btn + .wr-btn { background: #fff; color: var(--radar-ink); border: 1px solid var(--radar-line); box-shadow: none; }
+.wk-radar .wr-btn:hover { text-decoration: none; filter: brightness(1.06); }
+.wk-radar .wr-link { color: var(--radar-ink); }
+.sitcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.sitc { display: flex; flex-direction: column; padding: 14px 16px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); }
+.sitc:hover { border-color: var(--research); text-decoration: none; box-shadow: 0 8px 20px -12px rgba(37, 99, 235, .45); }
+.sitc .sd { font-size: 12.5px; font-weight: 650; color: var(--research-ink); }
+.sitc .sno { margin: 2px 0 10px; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.sitc .sk { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.sitc .sk span { display: flex; flex-direction: column; font-size: 11.5px; color: var(--muted); }
+.sitc .sk b { font-size: 17px; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; }
+.ovs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 10px; align-items: start; }
+.ov { padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); min-width: 0; }
+.ov h3 { margin: 0; font-size: 14px; font-weight: 750; }
+.ov .ov-n { display: block; margin: 4px 0 2px; font-size: 30px; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; color: var(--research-ink); font-variant-numeric: tabular-nums; }
+.ov .ov-l { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+.ov details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.ov summary { cursor: pointer; font-size: 13px; font-weight: 650; color: var(--research-ink); }
+.ov .ov-more { margin-top: 8px; font-size: 13.5px; }
+.ov .ov-more p { margin: 4px 0; }
+.ov .ov-more ul:not(.wk-bills) { margin: 4px 0; padding-left: 18px; }
+.ov .ov-more li { margin: 4px 0; }
+.ov:has(details[open]) { grid-column: 1 / -1; }
+.ov.ov-dec .ov-more ul:not(.wk-bills) { list-style: none; padding-left: 0; }
+.ov-dec .badge { font-size: 11px; }
+ul.wk-bills { list-style: none; padding: 0; margin: 6px 0 0; }
+ul.wk-bills li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+ul.wk-bills .bt { flex: 1 1 340px; font-weight: 600; min-width: 0; }
+ul.wk-bills .stps { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; align-items: flex-start; align-content: flex-start; flex: 0 1 auto; max-width: 100%; }
+.stp { display: inline-flex; flex: none; align-items: baseline; line-height: 1.7; gap: 6px; padding: 1px 9px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.stp small { font-size: 11px; font-weight: 500; opacity: .75; }
+.stp.br { background: #fdecd8; color: #9a3412; }
+.wk-more summary { cursor: pointer; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--research-ink); }
+
+/* the Wahlperiode calendar (weekly.period_page): a chapter per year, a heading per month */
+body.p-sittings .cal h2.year { margin: 34px 0 12px; font-size: var(--head-l); font-weight: 750; letter-spacing: -.015em; text-transform: none; color: var(--text); }
+body.p-sittings .cal h2.year .n, body.p-sittings .cal h3.mon .n { margin-left: 8px; padding: 1px 9px; border-radius: 999px; background: var(--research-soft); color: var(--research-ink); font-size: 12px; font-weight: 700; letter-spacing: 0; vertical-align: .14em; }
+body.p-sittings .cal h3.mon { margin: 22px 0 10px; font-size: 15px; font-weight: 750; }
+body.p-sittings .cal .strip { gap: 6px; margin: 0 0 8px; }
+body.p-sittings .cal .strip .m { padding: 8px 6px 9px; border-radius: 10px; }
+body.p-sittings .cal .strip .m b { font-size: 12px; color: var(--text); }
+body.p-sittings .cal .strip .m a, body.p-sittings .cal .strip .m span { min-width: 24px; font-size: 12px; padding: 2px 3px; border-radius: 999px; }
+body.p-sittings .cal .strip .m a { background: var(--research); color: #fff; }
+body.p-sittings .cal .strip .m a:hover { background: var(--research-ink); text-decoration: none; }
+body.p-sittings .cal .wk { border-top: 3px solid var(--research-line); }
+body.p-sittings .cal .wk h3 { font-size: 16px; font-weight: 750; }
+
+/* ---- the design switch, outside the public site while A and B are compared */
+.dsw { position: fixed; z-index: 80; right: 14px; bottom: 14px; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: #111827; box-shadow: 0 6px 20px rgba(0,0,0,.25); font: 600 12px/1 Inter, system-ui, sans-serif; }
+.dsw button { border: 0; border-radius: 999px; padding: 7px 12px; background: transparent; color: #cbd5e1; cursor: pointer; font: inherit; }
+.dsw button[aria-pressed=true] { background: #fff; color: #111827; }
+
+@media (max-width: 640px) {
+  :root { --head-xl: 26px; --head-l: 18px; }
+  .people { grid-template-columns: 1fr; }
+}
+
+/* ================================================================ version B: bolder
+   The paper takes a trace of blue (as Radar pages take a trace of violet), section headings carry the Radar's bar in
+   blue, cards a blue top edge as on the front page, the head a tinted band, charts a cool slate ramp. */
+html[data-design=b] body:not(.mode-radar) { --bg: #f3f5fa; }
+html[data-design=b] body:not(.mode-radar) { --k1: #1e293b; --k2: #475569; --k3: #94a3b8; --k4: #cbd5e1; --k5: #e2e8f0; }
+html[data-design=b] .ent-head:not(.fr), html[data-design=b] main > .card:first-of-type:not(.fr) { border-top: 3px solid var(--research); box-shadow: 0 10px 30px -18px rgba(37,99,235,.35); background: linear-gradient(180deg, #f5f8ff 0, var(--card) 120px); }
+html[data-design=b] .ent-head h1, html[data-design=b] .card h1 { font-size: calc(var(--head-xl) + 4px); }
+html[data-design=b] .tab h2, html[data-design=b] .facet h2, html[data-design=b] body:not(.p-home) main section:not(.wk-radar) > h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; padding-bottom: 8px; border-bottom: 2px solid var(--research-line); font-size: calc(var(--head-l) + 2px); }
+html[data-design=b] .tab h2::before, html[data-design=b] .facet h2::before, html[data-design=b] body:not(.p-home) main section:not(.wk-radar) > h2::before { content: ""; flex: none; width: 22px; height: 9px; margin-right: 10px; border-radius: 5px; background: linear-gradient(90deg, #93c5fd, var(--research)); }
+html[data-design=b] .cv { border-top: 3px solid var(--research-line); }
+html[data-design=b] .cv-t { font-size: 14.5px; }
+html[data-design=b] .tile:not(.world.radar .tile) { background: linear-gradient(160deg, #eef3ff, #e2eafe); }
+html[data-design=b] .people .pm { border-left: 3px solid var(--c, var(--line)); }
+html[data-design=b] .pc .av { width: 42px; height: 42px; }
+html[data-design=b] nav.tabs a.on { background: var(--research); color: #fff; }
+html[data-design=b] nav.tabs a.on .n { color: #fff; }
+html[data-design=b] .utag { background: var(--research); color: #fff; }
+html[data-design=b] .utag.soft { background: var(--research-soft); color: var(--research-ink); }
+html[data-design=b] .stat { border-top: 3px solid var(--research); }
+html[data-design=b] .stat b { color: var(--research-ink); }
+html[data-design=b] .mode-research main > h2, html[data-design=b] .mode-research .bodies > h2 { display: flex; align-items: center; padding-bottom: 8px; border-bottom: 2px solid var(--research-line); font-size: calc(var(--head-l) + 2px); }
+html[data-design=b] .mode-research main > h2::before, html[data-design=b] .mode-research .bodies > h2::before { content: ""; flex: none; width: 22px; height: 9px; margin-right: 10px; border-radius: 5px; background: linear-gradient(90deg, #93c5fd, var(--research)); }
+html[data-design=b] .toc a .lbl, html[data-design=b] .top h3 .lbl { background: var(--research); color: #fff; }
+html[data-design=b] .top { border-left: 3px solid var(--research-line); }
+html[data-design=b] .ftile { background: linear-gradient(180deg, color-mix(in srgb, var(--c) 7%, #fff), #fff 70%); }
+html[data-design=b] body.p-sittings .cal h2.year { display: flex; align-items: center; padding-bottom: 8px; border-bottom: 2px solid var(--research-line); font-size: calc(var(--head-l) + 2px); }
+html[data-design=b] body.p-sittings .cal h2.year::before { content: ""; flex: none; width: 22px; height: 9px; margin-right: 10px; border-radius: 5px; background: linear-gradient(90deg, #93c5fd, var(--research)); }
+html[data-design=b] .sitc { border-top: 3px solid var(--research); }
+html[data-design=b] .ov { border-top: 3px solid var(--research); }
+
+/* the stage of a Vorgang in the colours of the phases on its page (ol.tl .ph): pills in lists, the pipeline */
+.php { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; line-height: 1.7; white-space: nowrap; background: #eef2f7; color: #334155; }
+.php.st-eingebracht { background: var(--research-soft); color: var(--research-ink); }
+.php.st-ausschuesse { background: #e6f6f3; color: #115e59; }
+.php.st-beschlossen { background: #e3f3e7; color: #1f6b35; }
+.php.st-bundesrat { background: #fdecd8; color: #9a3412; }
+.php.st-verkuendet { background: #1f2937; color: #fff; }
+.php.st-abgelehnt, .php.st-versagt { background: #fde8e8; color: #b42318; }
+.dipst { display: block; margin-top: 3px; font-size: 11.5px; color: var(--faint); text-align: right; }
+.stage.st-eingebracht { border-top: 3px solid var(--research); } .stage.st-eingebracht .pb { background: var(--research); }
+.stage.st-ausschuesse { border-top: 3px solid #14b8a6; } .stage.st-ausschuesse .pb { background: #14b8a6; }
+.stage.st-beschlossen { border-top: 3px solid #22a046; } .stage.st-beschlossen .pb { background: #22a046; }
+.stage.st-bundesrat { border-top: 3px solid #ea7a1e; } .stage.st-bundesrat .pb { background: #ea7a1e; }
+.stage.st-verkuendet { border-top: 3px solid #1f2937; } .stage.st-verkuendet .pb { background: #1f2937; }
+.stage.st-abgelehnt, .stage.st-versagt { color: #b42318; }
+.row .l .dipst { white-space: normal; max-width: 240px; margin-left: auto; }
+@media (max-width: 640px) { .row .l { white-space: normal; } .row .l .php { white-space: normal; } .row .l .dipst { text-align: left; margin-left: 0; } }

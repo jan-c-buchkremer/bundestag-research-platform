@@ -109,3 +109,20 @@ footer { margin-top: 56px; }
   .wk .facts3 { gap: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .tile, .tile .t::after { transition: none; } .tile:hover { transform: none; } }
+
+/* the Radar box: violet ground, the way to the Radar's start page as its first element, the week as a wide tile */
+.world h2 { margin-top: 2px; }
+.world.radar { background: linear-gradient(165deg, #f4edff 0%, #fbf9ff 45%, #fff 100%); border-color: var(--radar-line); }
+.world.radar h2 { color: var(--radar-ink); }
+.world.radar .radar-go { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 13px 18px;
+  border-radius: 14px; background: linear-gradient(120deg, #7c3aed, #6d28d9); color: #fff; font-weight: 750;
+  font-size: 16px; letter-spacing: -.01em; box-shadow: 0 10px 24px -12px rgba(109, 40, 217, .7); }
+.world.radar .radar-go:hover { text-decoration: none; filter: brightness(1.07); transform: translateY(-1px); }
+.world.radar .radar-go .ri { width: 18px; height: 18px; color: #fff; }
+.world.radar .radar-go .ar { margin-left: auto; font-size: 18px; transition: transform .12s; }
+.world.radar .radar-go:hover .ar { transform: translateX(3px); }
+.world.radar .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.world.radar .tile { background: #fff; border: 1px solid var(--radar-line); }
+.world.radar .tile:first-child { grid-column: 1 / -1; border-left: 4px solid var(--radar); }
+.world.radar .tile:first-child .t { font-size: 17px; }
+@media (max-width: 640px) { .world.radar .tiles { grid-template-columns: 1fr; } }

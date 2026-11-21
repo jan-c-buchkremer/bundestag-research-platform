@@ -125,7 +125,6 @@ def page(
         ("daten.html", "Daten", "Über die Daten und Downloads."),
     )  # fmt: skip
     research = f"""<section class="world research" id="recherche">
-<span class="tagline">Recherche</span>
 <h2>Fakten</h2>
 <p>Die Arbeit des Bundestages aus den amtlichen Quellen: Plenarprotokolle, Abstimmungen, Drucksachen. Jede Angabe
 führt zu ihrer Quelle.</p>
@@ -134,19 +133,26 @@ führt zu ihrer Quelle.</p>
 
     radar_tiles = []
     if landscape:
-        radar_tiles.append(_tile(LANDSCAPE, "Themenlandschaft", "Zu jeder Sitzungswoche eine Landkarte ihrer Themen. "
-                                 "Interaktiv und informativ.", "jede Sitzungswoche"))  # fmt: skip
-    if themes:
-        radar_tiles.append(_tile(urls.THEMES, "Themen der Wahlperiode", "Die Themen der gesamten Wahlperiode mit "
-                                 "Fraktionen und Vorgängen.", f"{n(themes)} Themen"))  # fmt: skip
+        radar_tiles += [
+            _tile(f"{LANDSCAPE}index.html#sitzungswoche", "Die Woche im Bundestag", "Die aktuelle Sitzungswoche in "
+                  "wenigen Absätzen, mit den Meldungen der Woche und den steigenden Themen.", "automatisch erstellt"),
+            _tile(f"{LANDSCAPE}geschichten.html", "Beraten und entschieden", "Die Vorgänge der Woche, kurz erklärt, "
+                  "mit den Positionen der Fraktionen."),
+            _tile(f"{LANDSCAPE}{last['week']}.html" if last else f"{LANDSCAPE}index.html", "Themenlandschaft",
+                  "Die Reden einer Sitzungswoche als Landkarte ihrer Themen.", "jede Sitzungswoche"),
+            _tile(f"{LANDSCAPE}index.html#period", "Themen der Wahlperiode", "Wie sich die Themen seit 2025 "
+                  "entwickelt haben, mit Touren zum Einstieg.", f"{n(themes)} Themen" if themes else ""),
+        ]  # fmt: skip
     if compass:
         radar_tiles.append(_tile("kompass.html", "Wer stimmt wie ich?", "Ausgewählte Abstimmungen als Quiz, im "
                                  "Vergleich mit den Fraktionen.", "läuft nur im Browser"))  # fmt: skip
+    go = (f'<a class="radar-go" href="{LANDSCAPE}index.html">{RADAR_ICON}<span>Zum Radar</span>'
+          '<span class="ar" aria-hidden="true">→</span></a>' if landscape else "")  # fmt: skip
     radar = (f"""<section class="world radar" id="radar">
-<span class="tagline">{RADAR_ICON}Radar</span>
 <h2>Analyse</h2>
-<p>Datengetriebene Werkzeuge: automatisierte Extraktion von Themen im Bundestag, eine kuratierte
-Abstimmungssimulation und bald weitere Features.</p>
+<p>Datengetriebene Werkzeuge: die Woche im Bundestag automatisch zusammengefasst, die Themen der Reden als
+Landkarte und eine kuratierte Abstimmungssimulation.</p>
+{go}
 <div class="tiles">{"".join(radar_tiles)}</div>
 <p class="fine">Violett heißt auf dieser Seite immer: dieses Tool kann keine absolute Objektivität mehr
 gewährleisten. Jedes Element führt jedoch zu seiner Datengrundlage in der Recherche-Plattform, wo die Fakten sich

@@ -159,12 +159,20 @@ def written_questions(conn: sqlite3.Connection) -> dict:
             (WP, dtype),
         ).fetchall()
         askers: Counter = Counter()
-        for r in conn.execute(
+        # per question where the store names each question's asker (question_activity), else per Sammeldrucksache
+        per_question = has_table(conn, "question_activity") and bool(conn.execute(
+            "SELECT 1 FROM question_activity WHERE question_type = ? LIMIT 1", (kind,)).fetchone())  # fmt: skip
+        sql = (
+            """SELECT q.person_id, coalesce(d.date, '') AS date FROM question_activity q
+               JOIN vorgang v ON v.id = q.vorgang_id
+               LEFT JOIN drucksache d ON d.number = q.document_number AND d.type = ?
+               WHERE v.wahlperiode = ? AND v.type = ? AND q.activity_type = 'Frage' GROUP BY q.vorgang_id"""
+            if per_question else
             """SELECT a.person_id, d.date FROM drucksache_author a JOIN drucksache d ON d.id = a.drucksache_id
                WHERE d.wahlperiode = ? AND d.type = ? AND a.activity_type = 'Frage'
-               GROUP BY a.drucksache_id, coalesce(a.person_id, a.dip_person_id)""",
-            (WP, dtype),
-        ):
+               GROUP BY a.drucksache_id, coalesce(a.person_id, a.dip_person_id)"""
+        )  # fmt: skip
+        for r in conn.execute(sql, (dtype, WP, kind) if per_question else (WP, dtype)):
             f = None
             for m in fractions.get(r["person_id"] or "", []):
                 if m["from_date"] <= r["date"] and (m["to_date"] is None or m["to_date"] >= r["date"]):
@@ -177,7 +185,7 @@ def written_questions(conn: sqlite3.Connection) -> dict:
             "months": Counter(d[1][:7] for d in dates if d[1]),
             "undated": sum(1 for d in dates if not d[1]),
             "docs": len(docs), "docs_with_authors": sum(1 for d in docs if d["author_count"]),
-            "askers": askers,
+            "askers": askers, "per_question": per_question,
         }  # fmt: skip
     return out
 
@@ -445,6 +453,11 @@ def research_written(conn: sqlite3.Connection, pk: Packer, ressorts: dict[str, s
     ):
         spoke[r["sitting_id"]].append((r["person_id"], r["speaker_name"].split(",")[0], ministry_key(r["speaker_role"]),
                                        urls.speech(r["id"])))  # fmt: skip
+    own: dict[str, tuple] = {}  # the asker of each question, where the store names it (question_activity)
+    if has_table(conn, "question_activity"):
+        for r in conn.execute("SELECT vorgang_id, person_id, name FROM question_activity WHERE activity_type = 'Frage' "
+                              "ORDER BY id"):  # fmt: skip
+            own.setdefault(r["vorgang_id"], (r["person_id"], r["name"]))
     plenum: dict[str, sqlite3.Row] = {}
     first: dict[str, str] = {}
     if has_table(conn, "vorgang_position"):
@@ -462,7 +475,10 @@ def research_written(conn: sqlite3.Connection, pk: Packer, ressorts: dict[str, s
         c = collected.get(v["id"])
         doc = pk.doc(c["number"], c["id"], c["date"], c["pdf_url"]) if c else None
         named = list(dict.fromkeys(askers.get(c["id"], []))) if c else []
-        asker = pk.person(named[0][0], named[0][1].split(",")[0]) if len(named) == 1 else None
+        if v["id"] in own:
+            asker = pk.person(own[v["id"]][0], own[v["id"]][1].split(",")[0])
+        else:
+            asker = pk.person(named[0][0], named[0][1].split(",")[0]) if len(named) == 1 else None
         p = plenum.get(v["id"])
         answer = None
         if p and p["document_number"]:
@@ -634,24 +650,30 @@ def _questions_section(wq: dict) -> str:
             f"{slug}-monate", f"{label} je Monat",
             controls.columns("monat", span, by_month, groups, f"{label} je Monat", label, kind, also=f"liste={slug}"),
             controls.months_table(span, by_month, groups, label)))  # fmt: skip
-        if w["askers"] and w["docs_with_authors"] >= 0.9 * w["docs"]:
+        unit = "Fragen" if w.get("per_question") else "Nennungen"
+        if w["askers"] and (w.get("per_question") or w["docs_with_authors"] >= 0.9 * w["docs"]):
             total = sum(w["askers"].values())
             body = "".join(
                 f"<tr><td>{dot(f)} {e(f)}</td><td>{n(k)}</td><td>{_pct(k / total)}</td></tr>"
                 for f, k in sorted(w["askers"].items(), key=lambda x: fraction_order(x[0]))
             )
-            table = ('<div class="rows"><table class="plenum"><thead><tr><th>Fraktion</th><th>Nennungen</th>'
+            table = (f'<div class="rows"><table class="plenum"><thead><tr><th>Fraktion</th><th>{unit}</th>'
                      f"<th>Anteil</th></tr></thead><tbody>{body}</tbody></table></div>")  # fmt: skip
             chart = controls.stacked(
                 "fraktion", [(TOKEN[f], SHORT.get(f, f), TOKEN[f], Counter({"n": w["askers"][f]}))
-                             for f in _fractions(w["askers"])], [("n", "Nennungen")],
-                f"Fragesteller:innen der {label} nach Fraktion", "Nennungen", also=f"liste={slug}")  # fmt: skip
+                             for f in _fractions(w["askers"])], [("n", unit)],
+                f"Fragesteller:innen der {label} nach Fraktion", unit, also=f"liste={slug}")  # fmt: skip
+            named = n(sum(w["askers"].values()))
+            why = (f"Gezählt ist jede Frage mit der Fraktion der fragenden Person. DIP nennt sie für {named} "
+                   f"von {n(w['total'])} Fragen." if w.get("per_question") else
+                   "DIP nennt die Fragesteller:innen je Sammeldrucksache, nicht je Frage. Eine Nennung heißt: "
+                   "mindestens eine Frage in dieser Drucksache. Die Zahl der Nennungen ist deshalb kleiner als die der "
+                   f"Fragen. Fragesteller:innen genannt in {w['docs_with_authors']} von {w['docs']} "
+                   "Sammeldrucksachen.")  # fmt: skip
             parts.append(
-                controls.view(f"{slug}-fraktionen", "Nennungen nach Fraktion", chart, table)
-                + '<p class="explain">DIP nennt die Fragesteller:innen je Sammeldrucksache, nicht je Frage. Eine '
-                "Nennung heißt: mindestens eine Frage in dieser Drucksache. Die Zahl der Nennungen ist deshalb kleiner "
-                f"als die der Fragen. Fragesteller:innen genannt in {w['docs_with_authors']} von {w['docs']} "
-                "Sammeldrucksachen.</p>"
+                f"<h3>{label} nach Fraktion</h3>"
+                f'<p class="explain">{why}</p>'
+                + controls.view(f"{slug}-fraktionen", f"{unit} nach Fraktion", chart, table)
             )
         else:
             parts.append(
@@ -661,7 +683,9 @@ def _questions_section(wq: dict) -> str:
     return "".join(parts)
 
 
-def _befragung_section(bf: list[dict], fs: tuple[int, int]) -> str:
+def _befragung_section(bf: list[dict], fs: tuple[int, int], texts: bool = False) -> str:
+    """The questions per Befragung by Fraktion, the newest three shown. `texts`: each Befragung has its page
+    (question_pages.py), and a row leads there instead of filtering the list below."""
     gap = ""
     if fs[0] and not fs[1]:
         gap = (
@@ -671,8 +695,14 @@ def _befragung_section(bf: list[dict], fs: tuple[int, int]) -> str:
         )
     elif fs[0]:
         gap = (
-            f'<p class="explain">Die {n(fs[0])} Fragestunden der Wahlperiode haben {n(fs[1])} Fragen, Antworten und '
-            "Nachfragen im Protokoll. Sie stehen in den Steckbriefen der Beteiligten und zählen nicht als Reden.</p>"
+            f'<p class="explain">Die {n(fs[0])} Fragestunden der Wahlperiode haben {n(fs[1])} Antworten und '
+            "Nachfragen im Protokoll. Sie stehen in den Steckbriefen der Beteiligten und zählen nicht als Reden."
+            + (
+                f' Jede Fragestunde mit allen Fragen: <a href="../{urls.FRAGESTUNDEN}">Fragestunde</a>.'
+                if texts
+                else ""
+            )
+            + "</p>"
         )
     if not bf:
         return "<h2>Regierungsbefragung</h2>" + gap
@@ -680,8 +710,12 @@ def _befragung_section(bf: list[dict], fs: tuple[int, int]) -> str:
     for b in bf:
         total.update(b["questions"])
     fr = sorted(total, key=fraction_order)
+
+    def page_of(b: dict) -> str:
+        return urls.befragung(b["sitting"]) if texts else urls.sitting(b["sitting"], b["position"])
+
     rows = "".join(
-        f'<tr><td class="l"><a href="../{e(urls.sitting(b["sitting"], b["position"]))}">'
+        f'<tr><td class="l"><a href="../{e(page_of(b))}">'
         f"{short_date(b['date'])}</a></td>"
         f'<td class="l">'
         + "; ".join(
@@ -700,17 +734,21 @@ def _befragung_section(bf: list[dict], fs: tuple[int, int]) -> str:
         + f'</tr></thead><tbody><tr><td class="l">zusammen</td><td></td>{sums}</tr>{rows}</tbody></table></div>'
     )
     kinds = [(f, SHORT.get(f, f), TOKEN[f]) for f in _fractions(total)]
+    hrefs = {b["date"]: f"../{urls.befragung(b['sitting'])}" for b in bf} if texts else None
     chart = controls.stacked(
         "tag", [(b["date"], f"{short_date(b['date'])} · {', '.join(g['name'] for g in b['government'])}", "reg",
                  Counter({f: b["questions"][f] for f, *_ in kinds})) for b in reversed(bf)],
-        kinds, "Fragen je Regierungsbefragung nach Fraktion", "Fragen", also="liste=regierungsbefragung")  # fmt: skip
+        kinds, "Fragen je Regierungsbefragung nach Fraktion", "Fragen", also="liste=regierungsbefragung",
+        hrefs=hrefs, show=3).replace('class="stack"', 'class="stack wide"', 1)  # fmt: skip
+    click = ("Ein Klick auf eine Befragung öffnet alle ihre Fragen und Antworten im Wortlaut." if texts else
+             "Ein Klick auf eine Befragung zeigt unten ihre Beiträge, die Tabelle führt zum Tagesordnungspunkt im "
+             "Protokoll.")  # fmt: skip
     return (
         "<h2>Regierungsbefragung</h2>"
         '<p class="explain">In der Regierungsbefragung stellen sich Mitglieder der Bundesregierung den Fragen der '
-        "Abgeordneten. Gezählt sind Wortmeldungen mit Fraktion, also Fragen und Nachfragen. Ein Klick auf eine "
-        "Befragung zeigt unten ihre Beiträge, die Tabelle führt zum Tagesordnungspunkt im Protokoll.</p>"
-        + controls.view("befragung", "Fragen je Regierungsbefragung nach Fraktion", chart, table)
+        f"Abgeordneten. Gezählt sind Wortmeldungen mit Fraktion, also Fragen und Nachfragen. {click}</p>"
         + gap
+        + controls.view("befragung", "Fragen je Regierungsbefragung nach Fraktion", chart, table)
     )  # fmt: skip
 
 
@@ -751,7 +789,8 @@ def research_panel(d: dict) -> str:
     if rs:
         title = "Rolle in der Bundesregierung" if turns else "Ressort"
         parts.append(controls.block(title, controls.sized_chips(
-            "ressort", [(r, ressort_label.get(r, r), k) for r, k in rs.most_common()], title)))  # fmt: skip
+            "ressort", [(r, ressort_label.get(r, r).removeprefix("Bundesministerium "), k)
+                        for r, k in rs.most_common()], title)))  # fmt: skip
     parts.append(controls.block("Stand", controls.chips(
         "stand", [(x, stand_label.get(x, x), k, "accent") for x, k in st.most_common()], "Stand")))  # fmt: skip
     if kind == "kleine-anfragen":
@@ -794,9 +833,9 @@ def research_section(lists: dict[str, dict], texts: bool = False) -> str:
         "Fragestunde und der Regierungsbefragung, mit Link zur Quelle: der Drucksache oder dem Vorgang im DIP, dem "
         "PDF, dem Steckbrief der Fragenden und bei mündlichen Fragen dem Protokoll. "
         + wording
-        + "Die Fragenden einer Schriftlichen oder Mündlichen Frage nennt DIP je "
-        "Sammeldrucksache, nicht je Frage. Genannt ist hier nur, wer allein in seiner Sammeldrucksache steht. "
-        "Wer geantwortet hat, ergibt sich aus dem Ressort der Frage: genannt sind, wer für dieses Ressort in der "
+        + "Die Fragenden einer Schriftlichen oder Mündlichen Frage nennt DIP je Frage. Wo das fehlt, ist nur "
+        "genannt, wer allein in seiner Sammeldrucksache steht. Wer geantwortet hat, ergibt sich aus dem Ressort "
+        "der Frage: genannt sind, wer für dieses Ressort in der "
         "Sammeldrucksache oder in der Fragestunde geantwortet hat, meist eine Person, manchmal die beiden "
         "Parlamentarischen Staatssekretäre eines Ministeriums.</p>"
         f'<div id="fragen"><div class="qtabs" role="group" aria-label="Art der Fragen">{tabs}</div>'
@@ -816,13 +855,15 @@ def page(
 
     research = research_section(lists, texts) if lists else ""
     tabs = subtabs("../", QUESTION_TABS, "questions") if texts else ""
-    stats = f'<div class="qs" data-static>{_ka_section(ka)}{_questions_section(wq)}{_befragung_section(bf, fs)}</div>'
+    sections = _ka_section(ka) + _questions_section(wq) + _befragung_section(bf, fs, texts)
+    stats = f'<div class="qs" data-static>{sections}</div>'
     body = (
-        tabs + '<section class="card"><h1>Fragen an die Regierung</h1><div class="lines">Kleine Anfragen, Schriftliche '
-        "und Mündliche Fragen, Fragestunde und Regierungsbefragung im 21. Bundestag: oben die Zahlen nach "
-        "Fraktionen, darunter jede einzelne Frage zum Durchsuchen. Jede Zahl und jede Frage führt zu ihrer "
-        "Drucksache oder zum Plenarprotokoll. Ein Klick auf ein Diagramm zeigt unten die Fragen dazu. "
-        '<a href="#liste">Zu den einzelnen Fragen ↓</a> · <a href="../daten.html">Über die Daten</a></div></section>'
+        tabs + '<section class="card"><h1>Fragen an die Regierung</h1><p class="lead">Kleine Anfragen, Schriftliche '
+        "und Mündliche Fragen, Fragestunde und Regierungsbefragung im 21. Bundestag, nach Fraktionen gezählt.</p>"
+        '<p class="explain">Jede Zahl und jede Frage führt zu ihrer Drucksache oder zum Plenarprotokoll. Ein Klick '
+        "auf ein Diagramm zeigt unten die Fragen dazu.</p>"
+        '<div class="lines"><a href="#liste">Zu den einzelnen Fragen ↓</a> · <a href="../daten.html">Über die Daten'
+        "</a></div></section>"
         + controls.scope(stats + research, "Einträge", "Eintrag")
         + f"<footer>{FOOTER}</footer>" + ('<script src="../fragen.js"></script>' if research else "")
     )  # fmt: skip

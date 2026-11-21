@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from research import build, data
 
 
@@ -72,3 +74,15 @@ def test_retired_placeholder_ids_lead_to_the_card(conn, tmp_path):
     assert 'url=1.html"' in (tmp_path / "Q80.html").read_text() and not (tmp_path / "Q80.json").exists()
     assert (tmp_path / "pdf-anna-adler.html").exists()
     assert not (tmp_path / "pdf-nobody.html").exists() and not (tmp_path / "9.html").exists()
+
+
+@pytest.mark.versioned
+def test_versioned_asset_links():
+    from research import ui
+
+    html = ('<link rel="stylesheet" href="../design.css"><script src="nav.js" defer></script>'
+            '<script src="https://x.org/a.js"></script><a href="woche.html">')  # fmt: skip
+    got = ui.versioned(html)
+    assert 'href="../design.css?v=' in got and 'src="nav.js?v=' in got
+    assert 'src="https://x.org/a.js"' in got and 'href="woche.html"' in got  # remote scripts and pages stay
+    assert ui.versioned(got) == got  # stamping twice changes nothing

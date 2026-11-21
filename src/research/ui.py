@@ -5,9 +5,11 @@ modules and the fact components (facts.py) import from here, so neither has to i
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import html
 import json
 import os
+import re
 from pathlib import Path
 
 from research.data import NO_FRACTION
@@ -130,6 +132,46 @@ def frac_link(f: str | None, root: str = "../") -> str:
     return e(f or "")
 
 
+def initials(name: str) -> str:
+    """Two letters for a face that has no photo: first and last name, titles left out."""
+    parts = [w for w in name.replace("Frhr.", "").split() if not w.endswith(".") and w[:1].isupper()]
+    return (parts[0][0] + parts[-1][0]) if len(parts) > 1 else name[:2]
+
+
+def person_chip(pid: str, name: str, root: str = "../", photo: bool = False, sub: str = "") -> str:
+    """A person with their face (design.css .pc): the photo from fotos/, else their initials; `sub` (HTML, may hold
+    links) lines under the name."""
+    href = f"{root}{e(pid)}.html"
+    style = f' style="background-image:url({root}fotos/{e(pid)}.jpg)"' if photo else ""
+    face = f'<a class="av" href="{href}"{style} aria-label="{e(name)}" tabindex="-1">'
+    face += f"{'' if photo else e(initials(name))}</a>"
+    line = f'<span class="pf">{sub}</span>' if sub else ""
+    return f'<span class="pc">{face}<span class="pt"><a class="pn" href="{href}">{e(name)}</a>{line}</span></span>'
+
+
+def frac_chip(f: str | None, root: str = "../") -> str:
+    """A fraction as a small chip in its colour, linked to its page when it is one of the six fractions."""
+    tok = TOKEN.get(f or "", "reg")
+    inner = f'<span class="dot"></span>{e(SHORT.get(f or "", f or ""))}'
+    if f in TOKEN:
+        return f'<a class="fchip" style="--c:var(--{tok})" href="{root}fraktionen/{tok}.html">{inner}</a>'
+    return f'<span class="fchip" style="--c:var(--{tok})">{inner}</span>'
+
+
+def stat_tiles(items: list[tuple[str, str]]) -> str:
+    """A row of big numbers with a label each (design.css .stats), as on the front page: (number, label) pairs."""
+    tiles = "".join(f'<div class="stat"><b>{v}</b><span>{label}</span></div>' for v, label in items)
+    return f'<div class="stats">{tiles}</div>'
+
+
+def unit_pills(items: list[tuple[str, str | None]]) -> str:
+    """What a page holds, as pills under its head: (HTML text, href or None) each, e.g. ("<b>87</b> Mitglieder",
+    "#mitglieder")."""
+    pills = "".join(f'<a class="utag" href="{e(h)}">{t}</a>' if h else f'<span class="utag">{t}</span>'
+                    for t, h in items)  # fmt: skip
+    return f'<div class="utags">{pills}</div>' if pills else ""
+
+
 def site_header(root: str, active: str | None, mode: str = "research") -> str:
     """The header of every page; `root` is the way back to the site root ("" or "../"). `mode` is the part of the site
     the page belongs to: "research", "radar", or "home" for the front page, which belongs to both. The search field
@@ -197,6 +239,34 @@ def subtabs(root: str, tabs: tuple[tuple[str, str, str], ...], active: str) -> s
     return f'<nav class="tabs sub" aria-label="Ansichten"><div class="tabs-in">{links}</div></nav>'
 
 
+_ASSET_V: list[str] = []
+_LOCAL_ASSET = re.compile(r'((?:href|src)="(?![a-z]+:|//)[^"?#]*\.(?:css|js))"')
+
+
+def versioned(html: str) -> str:
+    """Every local stylesheet and script link with ?v=<hash of the shipped CSS and JS>, so a browser or the CDN never
+    keeps an old copy after a release (the files themselves keep their names)."""
+    if not _ASSET_V:
+        h = hashlib.sha1()
+        for p in sorted(HERE.glob("*.css")) + sorted(HERE.glob("*.js")):
+            h.update(p.read_bytes())
+        _ASSET_V.append(h.hexdigest()[:10])
+    return _LOCAL_ASSET.sub(rf'\1?v={_ASSET_V[0]}"', html)
+
+
+SITE = "plenar-radar.de"
+
+
+def tab_title(title: str, limit: int = 64) -> str:
+    """The title in the browser tab: the page's own name, cut at a word to `limit` characters, then the site's."""
+    if SITE in title:
+        return title
+    t = " ".join(title.split())
+    if len(t) > limit:
+        t = t[: limit - 1].rsplit(" ", 1)[0].rstrip(" ,;:–-…") + " …"
+    return f"{t} | {SITE}"
+
+
 def shell(
     *,
     root: str,
@@ -210,10 +280,10 @@ def shell(
     mode: str = "research",
 ) -> str:
     """A page of the site in the shared shell; `mode` "radar" gives it the Radar colour and header (site_header)."""
-    return (
+    return versioned(
         (HERE / "page.html")
         .read_text(encoding="utf-8")
-        .replace("__TITLE__", e(title))
+        .replace("__TITLE__", e(tab_title(title)))
         .replace("__DESC__", e(desc))
         .replace("__HEAD__", head)
         .replace("__KIND__", f"{kind} mode-{mode}")
@@ -230,7 +300,9 @@ def shell(
 def search_marks(kind: str, date: str | None, **filters: str | None) -> str:
     """Hidden Pagefind filters for a page (search.py): its kind, its month and whatever else is given."""
     marks = {"Art": kind, "Monat": f"{MONTHS[int(date[5:7]) - 1]} {date[:4]}" if date else None, **filters}
-    return "".join(f'<span hidden data-pagefind-filter="{k}">{e(v)}</span>' for k, v in marks.items() if v)
+    spans = "".join(f'<span data-pagefind-filter="{k}">{e(v)}</span>' for k, v in marks.items() if v)
+    # data-pagefind-ignore: Pagefind still reads the filters, but their words stay out of the text and its excerpts
+    return f"<div hidden data-pagefind-ignore>{spans}</div>" if spans else ""
 
 
 def badge(result: str | None) -> str:
@@ -252,15 +324,21 @@ def crumbs(*links: tuple[str | None, str]) -> str:
     return f'<p class="crumbs">{" › ".join(parts)}</p>'
 
 
-def entity_header(title: str, lines: list[str], links: list[str] | None = None, when: str = "", cls: str = "") -> str:
+def entity_header(
+    title: str,
+    lines: list[str],
+    links: list[str] | None = None,
+    when: str = "",
+    cls: str = "",
+    pills: list[tuple[str, str | None]] | None = None,
+) -> str:
     """The header of every entity page: what it is (`when`, a small line above), its name, a few lines of facts
-    (HTML) and links to the sources."""
+    (HTML), what the page holds as pills (unit_pills) and links to the sources."""
     top = f'<div class="when">{when}</div>' if when else ""
     rows = "".join(f"<div>{x}</div>" for x in lines if x)
     more = f'<div class="links">{"".join(links)}</div>' if links else ""
-    return (
-        f'<section class="card ent-head {cls}">{top}<h1>{e(title)}</h1><div class="lines">{rows}</div>{more}</section>'
-    )
+    return (f'<section class="card ent-head {cls}">{top}<h1>{e(title)}</h1><div class="lines">{rows}</div>'
+            f"{unit_pills(pills or [])}{more}</section>")  # fmt: skip
 
 
 def facet(key: str, title: str, body: str, count: int | None = None, explain: str = "") -> str:

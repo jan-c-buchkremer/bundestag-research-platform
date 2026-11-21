@@ -29,7 +29,7 @@ import sqlite3
 from collections import Counter
 from pathlib import Path
 
-from research import controls, facts, redirects, urls
+from research import controls, data, facts, redirects, urls
 from research.controls import GROUP_TOKENS
 from research.data import WP, _has_column, drucksache_pdf, has_table, initiator_group, iso_week, page_id
 from research.ui import (
@@ -538,10 +538,16 @@ def procedure_page(b: dict, have: set[str], members: dict[str, list[list]], rela
     if b["subjects"]:
         links = ", ".join(f'<a href="../{e(urls.subject(x))}">{e(x)}</a>' for x in b["subjects"])
         lines.append(f'<span class="k">Sachgebiete</span> {links}')
+    hib = b.get("hib") or []
+    links = [f'<a href="{DIP_VORGANG.format(e(b["id"]))}">Vorgang im DIP ↗</a>']
+    if hib:
+        links.append(f'<a href="#hib">{n(len(hib))} {"Meldung" if len(hib) == 1 else "Meldungen"} in hib</a>')
     parts = [
         crumbs(("index.html", "Vorgänge"), (None, art(b["type"]))),
-        entity_header(b["title"], lines, [f'<a href="{DIP_VORGANG.format(e(b["id"]))}">Vorgang im DIP ↗</a>']),
+        entity_header(b["title"], lines, links),
     ]
+    if hib:
+        parts.append(facet("hib", "In den Nachrichten: hib", facts.hib_list(hib), len(hib), facts.HIB_NOTE))
     steps = []
     for s in b["timeline"]:
         d = s["decision"]
@@ -634,6 +640,30 @@ def groups(b: dict) -> set[str]:
     return {initiator_group(x) for x in b["initiators"] if isinstance(x, str)}
 
 
+STATUS_STAGE = {  # a Vorgang other than a Gesetzgebung: its DIP Stand in the colour of the matching stage
+    "Angenommen": "beschlossen", "Abgelehnt": "abgelehnt", "Noch nicht beraten": "eingebracht",
+    "Überwiesen": "ausschuesse", "Beschlussempfehlung liegt vor": "ausschuesse", "Abgeschlossen": "abgeschlossen",
+}  # fmt: skip
+
+
+def stage_pill(b: dict) -> str:
+    """The stand of a Vorgang as a pill in the colour of its stage: a Gesetzgebung by its stage (STAGES, with DIP's
+    Stand under it), any other Vorgang by its DIP Stand."""
+    if b["type"] == GESETZ:
+        k = stage(b)
+        label = dict((*STAGES, *ENDED, NO_STAGE))[k]
+        dip = f'<span class="dipst">{e(b["status"])}</span>' if b["status"] != label else ""
+        return f'<span class="php st-{k}">{e(label)}</span>{dip}'
+    return f'<span class="php st-{STATUS_STAGE.get(b["status"], "ohne")}">{e(b["status"])}</span>'
+
+
+def started(b: dict) -> str:
+    """The date of a Vorgang's first step, not counting its Verkündung or Inkrafttreten (a law can come into force
+    retroactively, before it was introduced)."""
+    return min((t["date"] for t in b.get("timeline") or []
+                if t["date"] and t["phase"] != "Verkündung" and t["what"] != "Inkrafttreten"), default="")  # fmt: skip
+
+
 def row(b: dict, href: str, external: bool = False) -> str:
     """One Vorgang in a list (the index, a Sachgebiet's Vorgänge): the date of its newest step, title, kind,
     Einbringer, a later Inkrafttreten, and the DIP Stand; with its values for the controls (`data-gruppe`,
@@ -643,12 +673,17 @@ def row(b: dict, href: str, external: bool = False) -> str:
     by = ", ".join(b["initiators"][:3]) + (" …" if len(b["initiators"]) > 3 else "")
     von = " ".join(sorted(GROUP_TOKENS[g] for g in groups(b) if g in GROUP_TOKENS))
     later = f" · tritt am {short_date(b['in_force'])} in Kraft" if b.get("in_force") else ""
+    first = started(b)
+    steps = len(b.get("timeline") or [])
+    order = (f' data-s-bewegt="{b["latest"]}" data-d-bewegt="{short_date(b["latest"]) if b["latest"] else ""}"'
+             f' data-s-start="{first}" data-d-start="{short_date(first) if first else ""}"'
+             f' data-s-schritte="{steps:04d}"')  # fmt: skip
     return (
         f'<a class="row" href="{e(href)}" data-gruppe="{vorgang_group(b)}" data-art="{urls.slug(b["type"])}" '
-        f'data-stufe="{stage(b)}" data-von="{von}" data-w="{iso_week(b["latest"]) if b["latest"] else ""}">'
+        f'data-stufe="{stage(b)}" data-von="{von}" data-w="{iso_week(b["latest"]) if b["latest"] else ""}"{order}>'
         f'<span class="d">{short_date(b["latest"]) if b["latest"] else ""}</span><span class="t"><span class="ti">'
         f'{e(b["title"])}{mark}</span><span class="sub">{e(art(b["type"]))}{f" · {e(by)}" if by else ""}{later}</span>'
-        f'</span><span class="l"><span class="st">{e(b["status"])}</span></span></a>'
+        f'</span><span class="l">{stage_pill(b)}</span></a>'
     )
 
 
@@ -690,6 +725,13 @@ def vorgaenge_controls(vs: list[dict], href, sitting_dates: list[str], glossary:
         parts.append(controls.view("stufe", title, pipe, stand_table(bills, glossary)))
     parts.append(controls.block("Einbringer", controls.group_chips("von", Counter(g for v in vs for g in groups(v)))))
     parts.append(controls.activity([v["latest"] for v in vs], sitting_dates, noun, "Vorgang", "Zuletzt bewegt"))
+    if len(vs) > 1:
+        parts.append(controls.sorter([
+            ("bewegt", "Zuletzt bewegt", "desc", "Datum: letzter Schritt, der neueste zuerst"),
+            ("start", "Zuletzt eingebracht", "desc", "Datum: erster Schritt, der neueste zuerst"),
+            ("start", "Zuerst eingebracht", "asc", "Datum: erster Schritt, der älteste zuerst"),
+            ("schritte", "Meiste Schritte", "desc", "Datum: letzter Schritt"),
+        ]))  # fmt: skip
     parts.append(controls.rows((row(v, *href(v)) for v in vs), "bills", "Keine Vorgänge im Datenbestand."))
     return controls.scope("".join(parts), noun, "Vorgang") if wrap else "".join(parts)
 
@@ -749,6 +791,9 @@ def write(conn: sqlite3.Connection, out: Path, sittings: list[dict], decisions: 
     abstimmungen/<page id>.html of every decision that is now a point on a Vorgang's timeline. Call after the sitting,
     vote and speech pages so the links can be checked against them. Returns the Vorgänge written."""
     procs = load(conn, sittings, decisions)
+    hib = data.hib_by_vorgang(conn)
+    for b in procs:
+        b["hib"] = hib.get(str(b["id"]), [])
     have = {
         f"{d}/{p.name}"
         for d in ("sitzungen", "abstimmungen", "reden")

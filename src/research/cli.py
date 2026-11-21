@@ -114,7 +114,7 @@ def main(argv: list[str] | None = None) -> None:
     written_subjects = subjects.write(conn, args.out, procs, sittings)
     n_eu = len(eu.write(conn, args.out, procs, subjects.EUROPE in written_subjects, sittings))
     print(f"wrote {len(written_subjects)} pages in sachgebiete/, vorgaenge/eu-vorlagen.html with {n_eu} EU-Vorlagen")
-    print(f"wrote {weekly.write(conn, args.out, sittings, decided).get('woche', 0)} pages in woche/")
+    print(f"wrote {weekly.write(conn, args.out, sittings, decided, data.radar_lead()).get('woche', 0)} pages in woche/")
     written_themes = topics.write(args.out, themes, data.speech_facts(cards), sittings)
     print(f"wrote {len(written_themes)} topic pages in themen/" if written_themes
           else "LANDSCAPE_THEMES not set: no topic pages")  # fmt: skip

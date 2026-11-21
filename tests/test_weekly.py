@@ -93,7 +93,7 @@ def test_write(conn, tmp_path):
     sittings = data.sittings(conn, decided)
     assert weekly.write(conn, tmp_path, sittings, decided) == {"woche": 1}
     page = (tmp_path / "woche" / "2026-W28.html").read_text()
-    assert "Sitzungswoche 28/2026" in page and "Messerangriffe" in page and "an einem Tag getagt" in page
+    assert "Sitzungswoche 28/2026" in page and "Messerangriffe" in page and "<h3>Aktuelle Stunden</h3>" in page
     assert 'href="../sitzungen/21-88.html"' in page and 'href="../sitzungen/index.html">21. Wahlperiode</a>' in page
     assert "plenar-radar.de/themenlandschaft/2026-W28.html" in page  # the topic map lives there
     for key in ("sitzungen", "reden", "abstimmungen", "drucksachen"):
@@ -101,3 +101,40 @@ def test_write(conn, tmp_path):
     assert "../sitzungen/index.html" in (tmp_path / "woche" / "index.html").read_text()  # the old index: a stub
     ET.parse(tmp_path / "woche" / "feed.xml")
     assert weekly.write(conn, tmp_path, [], []) == {}
+
+
+def test_bills_grouped_and_folded():
+    steps = [{"vorgang": f"g{k}", "title": f"Gesetz {k}", "date": "2026-07-09", "position": "1. Beratung",
+              "chamber": "BT"} for k in range(weekly.BILLS + 2)]  # fmt: skip
+    steps.append({"vorgang": "g0", "title": "Gesetz 0", "date": "2026-07-10", "position": "Durchgang", "chamber": "BR"})
+    w = weekly.gather([sitting("21/2", 2, "2026-07-08")], [], [], steps)
+    got = dict(weekly.sentences(w, "../", have={"g0"}))["Gesetzgebung"]
+    assert f"{weekly.BILLS + 2} Gesetzesvorhaben hatten" in got
+    assert got.count("Gesetz 0") == 1 and 'class="stp br"' in got  # one row per Vorgang, its Bundesrat step warm
+    assert f"Alle {weekly.BILLS + 2} Vorhaben zeigen" in got  # the rest behind a toggle
+
+
+def test_radar_box():
+    lead = {"week": "2026-W28", "label": "Automatisch erstellt.", "sentences": [
+        {"text": "Der Bundestag beriet über Mieten.", "paragraph": 0},
+        {"text": "Er nahm ein Gesetz an.", "paragraph": 1}, {"text": "Dazu mehr.", "paragraph": 2}]}  # fmt: skip
+    box = weekly.radar_box("2026-W28", lead, latest=True)
+    assert "Der Bundestag beriet über Mieten." in box and "automatisch erstellt" in box
+    assert "Weiterlesen" in box  # the third paragraph folded
+    assert "index.html#sitzungswoche" in box and "2026-W28.html" in box  # the whole week, the map
+    assert "#sitzungswoche" not in weekly.radar_box("2026-W28", lead, latest=False)  # the start page has the newest
+    other = weekly.radar_box("2026-W27", lead, latest=False)  # a lead of another week is not shown
+    assert "Mieten" not in other and "2026-W27.html" in other and "Diese Woche im Radar" in other
+
+
+def test_overview_tiles():
+    w = weekly.gather(
+        [sitting("21/2", 2, "2026-07-08")],
+        [],
+        [],
+        [{"vorgang": "g1", "title": "Gesetz 1", "date": "2026-07-09", "position": "1. Beratung", "chamber": "BT"}],
+    )
+    html = weekly.overview(w, "../", {"g1"})
+    for t in ("Beschlüsse", "Aktuelle Stunden", "Ordnungsmaßnahmen", "Gesetzgebung"):
+        assert f"<h3>{t}</h3>" in html
+    assert "Die Vorhaben und ihre Schritte" in html and "vorgaenge/g1.html" in html

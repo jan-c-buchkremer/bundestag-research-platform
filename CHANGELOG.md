@@ -5,6 +5,42 @@ not before? If that sentence is hard to write, the release is not a finished ver
 
 ## Unreleased
 
+Readers see every member of a Fraktion or Gremium with their photo, find the hib reports on a Vorgang and in its
+week, and get from a Sitzungswoche straight to the Radar's summary of it.
+
+- The search page in the design of the other pages: a head card with the field, examples and a pill per kind of
+  result; people, places, Vorgänge (with their phase pill) and themes as cards with „Alle N zeigen“; Fraktion colours
+  in the filters, each filter group folds and the whole column hides („Filter ausblenden“, kept for the next visit).
+  Excerpts no longer start with the hidden filter labels or the page head; Anfragen show their date. An empty
+  search in the top bar opens the search page.
+- A site icon (the hemicycle of the logo, `favicon.svg`, `favicon.ico`, `apple-touch-icon.png`) and tab titles in
+  one form: the page's own name, cut at a word after 64 characters, then „| plenar-radar.de“ (`ui.tab_title`).
+- One design language with the Radar (`design.css`): a head card with a title line and pills that jump to the
+  sections, section headings with their count as a pill, explanations behind an info button, a bluish ground.
+- Fraktion, Gremium and the Rollen on the Abgeordnete page: people as cards with photo, role and Fraktion; a
+  Fraktion's head in its colour with four numbers; the Gremien index shows each Fraktion's seats.
+- Speeches carry their Fraktion as a chip; Text, Themenlandschaft and Protokoll are small pill links.
+- Vorgang: the phase of each step as a coloured pill, and „In den Nachrichten: hib“: the reports of „heute im
+  bundestag“ whose subject is one of its Drucksachen, as title and link to bundestag.de.
+- Sitzungswoche: the Radar's generated summary of the week in a violet box with the way to the week on the Radar,
+  the sittings as cards, the week as four tiles that unfold (Beschlüsse, Aktuelle Stunden, Ordnungsmaßnahmen,
+  Gesetzgebung with each bill's steps), and the week's hib reports.
+- Sitzungen: a chapter per year, a heading per month, the sitting weeks as pills in the calendar strip. Each week
+  spans the page: its counts, the way to its page and its Themenlandschaft, and its sittings side by side with
+  their counts and the debate with the most speeches.
+- Vorgänge: each row shows its stand as a pill in the colours of the phases on a Vorgang's page, as does the
+  pipeline of the Gesetzgebung. The list can be ordered by the last step, by the first step (newest or oldest
+  first) or by the number of steps; the date column follows the order.
+- Front page: the Radar box leads to the Radar's start page and its parts.
+- Fragen: each Fragestunde has its page (`regierung/fragestunde/`), every question called with its printed
+  wording, the answer and the follow-ups. A Regierungsbefragung or Fragestunde filters its questions by the
+  asker's Fraktion, by who answered and by words. The overview shows the newest three Befragungen, each leading to
+  its page. Schriftliche and Mündliche Fragen name their asker per question (DIP's activities), so the Fraktion
+  filter and the count by Fraktion cover nearly all of them. Ressorts without a hit fold behind one button.
+- Debattenkultur: a head card with jump pills, each chart in a card, the explanations behind info buttons, and the
+  Ordnungsmaßnahmen as rows with the newest five shown.
+- Stylesheets and scripts are linked with a version stamp, so no browser keeps an old copy after a release.
+
 ## v0.2.3 (2026-10-16)
 
 Readers can see on the Datenschutz page what the server records about a visit: an access log with shortened IP

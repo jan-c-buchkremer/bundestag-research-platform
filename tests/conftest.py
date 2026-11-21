@@ -442,3 +442,12 @@ def conn_without_round2(conn):
     """A store from before the government roster, photos and decisions."""
     conn.executescript("DROP TABLE government_role; DROP TABLE person_photo; DROP TABLE decision;")
     return conn
+
+
+@pytest.fixture(autouse=True)
+def _plain_asset_links(monkeypatch, request):
+    """Pages in tests keep their asset links as written; test_ui tests the ?v= stamp itself."""
+    if request.node.get_closest_marker("versioned") is None:
+        from research import ui
+
+        monkeypatch.setattr(ui, "versioned", lambda html: html)

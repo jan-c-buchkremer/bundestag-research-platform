@@ -172,6 +172,20 @@
           }
         }
       }
+      // a group of sized chips (ministries, committees) hides the values without a hit behind one button
+      if (loaded) for (const g of scope.querySelectorAll('.ctl-chips')) {
+        if (!g.querySelector('.chip.sized')) continue;
+        const k = g.querySelectorAll('.chip.sized.none:not([aria-pressed="true"])').length;
+        let b = g.querySelector('.ctl-rest');
+        if (!b) {
+          b = document.createElement('button');
+          b.type = 'button'; b.className = 'ctl-rest';
+          b.addEventListener('click', ev => { ev.stopPropagation(); g.classList.toggle('all'); counts(z); });
+          g.append(b);
+        }
+        b.hidden = !k;
+        b.textContent = g.classList.contains('all') ? 'ohne Treffer ausblenden' : `${n(k)} ohne Treffer zeigen`;
+      }
       if (!bars.length) return;
       const per = {};
       for (const r of rows) if (r.w && matches(r, state, 'zeit', singles)) per[r.w] = (per[r.w] || 0) + 1;
@@ -213,7 +227,8 @@
       if (none) none.hidden = !loaded || hits > 0;
       if (count) {
         const base = hits === rows.length ? `${n(rows.length)} ${rows.length === 1 ? one : noun}` : `${n(hits)} von ${n(rows.length)} ${dat}`;
-        count.textContent = !loaded ? '' : hits > shown ? `${base}, die neuesten ${n(shown)} hier` : base;
+        const first = scope.querySelector('.ctl-sort') ? 'die ersten' : 'die neuesten';
+        count.textContent = !loaded ? '' : hits > shown ? `${base}, ${first} ${n(shown)} hier` : base;
       }
       counts(drag ? [drag[0], drag[1]].sort() : state.zeit);
       const out = strip?.querySelector('[data-range]');
@@ -265,7 +280,32 @@
       });
     }
 
+    // the order of a flat list (controls.sorter): by a row attribute data-s-<key>, the date column from data-d-<key>
+    const sorter = scope?.querySelector('.ctl-sort');
+    function sortBy(b) {
+      const key = b.dataset.sort, up = b.dataset.dir === 'asc';
+      const val = r => r.el.getAttribute(`data-s-${key}`) || '';
+      rows.sort((x, y) => {
+        const a = val(x), c = val(y);
+        if (!a || !c) return a ? -1 : c ? 1 : 0;  // without a value: last either way
+        return up ? a.localeCompare(c) : c.localeCompare(a);
+      });
+      const anchor = list.querySelector(':scope > [data-none]');
+      for (const r of rows) {
+        if (r.el.parentNode === list) list.insertBefore(r.el, anchor);
+        const d = r.el.querySelector('.d'), shown = r.el.getAttribute(`data-d-${key}`) ?? r.el.getAttribute('data-d-bewegt');
+        if (d && shown != null) d.textContent = shown;
+      }
+      for (const o of sorter.querySelectorAll('[data-sort]')) o.setAttribute('aria-pressed', String(o === b));
+      const note = sorter.querySelector('[data-sort-note]');
+      if (note) note.textContent = b.dataset.note || '';
+      limit = step;
+      apply();
+    }
+
     document.addEventListener('click', e => {
+      const s = e.target.closest('.ctl-sort [data-sort]');
+      if (s && scope?.contains(s)) { sortBy(s); return; }
       const t = e.target.closest('[data-f][data-v], [data-show], [data-reset], [data-more], [data-zeit-clear], .swk');
       if (!t) return;
       if (t.matches('[data-show]')) {

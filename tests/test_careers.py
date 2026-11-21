@@ -89,7 +89,8 @@ def test_roles_section(conn):
         and 'href="gremien/praesidium.html"' in pres
     )
     fch = html.split("<h3>Fraktionsvorsitz</h3>", 1)[1].split("<h3>", 1)[0]
-    assert 'href="fraktionen/spd.html">SPD</a>' in fch and 'href="1.html">Anna Adler</a>' in fch
+    assert 'href="fraktionen/spd.html"><span class="dot"></span>SPD</a>' in fch
+    assert 'href="1.html">Anna Adler</a>' in fch
     chairs = html.split("<h3>Vorsitz der Ausschüsse und Gremien</h3>", 1)[1].split("<h3>", 1)[0]
     assert 'href="gremien/gesundheit.html">Gesundheit</a>' in chairs
     gov = html.split("<h3>In der Bundesregierung</h3>", 1)[1].split("<h3>", 1)[0]

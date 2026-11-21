@@ -17,6 +17,7 @@ HERE = Path(__file__).parent
 ASSETS = (
     "shell.css",
     "cards.css",
+    "design.css",
     "card.js",
     "pages.js",
     "parliament.js",
@@ -29,6 +30,9 @@ ASSETS = (
     "fragen.js",
     "landing.css",
     "landing.js",
+    "favicon.svg",
+    "favicon.ico",
+    "apple-touch-icon.png",
 )
 
 
@@ -198,11 +202,11 @@ def card_tabs(c: dict, meta: dict, decisions: dict[str, dict] | None = None) -> 
 
 
 def render_card(c: dict, meta: dict, decisions: dict[str, dict] | None = None) -> str:
-    title = f"{c['name']} – {c['fraction'] or c['role'] or 'Bundestag'}"
-    return (
+    title = f"{c['name']} ({c['fraction'] or c['role'] or 'Bundestag'})"
+    return ui.versioned(
         (HERE / "card.html")
         .read_text(encoding="utf-8")
-        .replace("__TITLE__", html.escape(title))
+        .replace("__TITLE__", html.escape(ui.tab_title(title)))
         .replace("__DESC__", html.escape(description(c)))
         .replace("__ID__", html.escape(c["id"]))
         .replace("__CARD__", _json(c))
@@ -237,7 +241,7 @@ def render_index(
         "committees": committees or {},
     }  # fmt: skip
     slugs = {code: x["slug"] for code, x in places["lands"].items()}
-    return (
+    return ui.versioned(
         (HERE / "index.html")
         .read_text(encoding="utf-8")
         .replace("__HEADER__", ui.site_header("", "cards"))

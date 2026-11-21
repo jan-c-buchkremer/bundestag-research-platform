@@ -16,7 +16,21 @@ from collections import Counter, defaultdict
 
 from research import urls
 from research.data import NO_FRACTION, VOTE_CHOICES, iso_week, majority
-from research.ui import LANDSCAPE, POSITION, SHORT, TOKEN, VOTE, badge, dot, e, frac_link, fraction_order, kind_label, n
+from research.ui import (
+    LANDSCAPE,
+    POSITION,
+    SHORT,
+    TOKEN,
+    VOTE,
+    badge,
+    dot,
+    e,
+    frac_chip,
+    frac_link,
+    fraction_order,
+    kind_label,
+    n,
+)
 from research.ui import short_date as sd
 
 LIMIT = 25  # rows of a list shown before "Alle N zeigen"
@@ -46,6 +60,31 @@ def fact_list(rows: list[str], key: str, empty: str, limit: int | None = LIMIT, 
     shown = "".join(rows[:limit]) + "".join(_cut(r) for r in rows[limit:])
     more = f'<button type="button" class="more" data-for="{e(key)}">Alle {n(len(rows))} zeigen</button>'
     return f'<div class="rows" id="{e(key)}">{shown}{more}</div>{note}'
+
+
+# ---------------------------------------------------------------- hib
+
+HIB = '<a href="https://www.bundestag.de/presse/hib">hib – heute im bundestag</a>'
+HIB_NOTE = (
+    f"Meldungen aus {HIB}, dem Nachrichtendienst der Parlamentsnachrichten des Bundestages, die eine "
+    "Drucksache dieses Vorgangs nennen. Titel und Link, der Text steht bei der Quelle. © Deutscher Bundestag"
+)
+
+
+def hib_row(h: dict, vorgang: tuple[str, str] | None = None) -> str:
+    """One hib item: date, kind, the title linking the item at bundestag.de; `vorgang` (href, title) adds its
+    Vorgang."""
+    vg = f'<div class="sub">zum Vorgang <a href="{e(vorgang[0])}">{e(vorgang[1])}</a></div>' if vorgang else ""
+    return (f'<div class="row hib"><div class="d">{e(sd(h["date"]))}</div><div class="t">'
+            f'<span class="hk">{e(h["kind"])}</span><a class="ti" href="{e(h["url"])}">{e(h["title"])} ↗</a>'
+            f'<div class="sub">{e(h["ressort"])}</div>{vg}</div></div>')  # fmt: skip
+
+
+def hib_list(items: list[dict], key: str = "hib", limit: int | None = 4,
+             vorgang=None) -> str:  # fmt: skip
+    """hib items as rows, the newest `limit` shown; `vorgang(item)` gives (href, title) of an item's Vorgang."""
+    rows = [hib_row(h, vorgang(h) if vorgang else None) for h in items]
+    return fact_list(rows, key, "Keine Meldung in hib.", limit=limit)
 
 
 # ---------------------------------------------------------------- speeches
@@ -83,8 +122,10 @@ def speech(sp: dict, root: str = "../", *, speaker: bool = True, where: bool = T
         sp = {**sp, "speaker_href": f"{root}{urls.person(sp['speaker'])}"}
     lines = []
     if speaker:
-        tag = sp.get("role") or sp.get("fraction") or ""
-        lines.append(f'<span class="nm">{_link(person, e(sp.get("name")))}</span>'
+        f = sp.get("fraction") or ""
+        chip = frac_chip(f, root) if f in TOKEN else ""
+        tag = sp.get("role") or ("" if chip else f)
+        lines.append(f'<span class="nm">{_link(person, e(sp.get("name")))}{chip}</span>'
                      + (f' <span class="sub">{e(tag)}</span>' if tag else ""))  # fmt: skip
     if where and sp.get("date"):
         at = urls.sitting(sp["sitting"], sp.get("position")) if sp.get("sitting") else None
@@ -120,7 +161,7 @@ def speech(sp: dict, root: str = "../", *, speaker: bool = True, where: bool = T
     av = (f'<span class="av" style="--c:var(--{TOKEN.get(sp.get("fraction") or "", "reg")})">{avatar(sp, root)}</span>'
           if speaker else "")  # fmt: skip
     return (f'<div class="sp{"" if speaker else " solo"}" data-q="{e(search.lower())}">{av}'
-            f'<span class="who">{"".join(lines)}</span><span class="go">{" · ".join(go)}</span></div>')  # fmt: skip
+            f'<span class="who">{"".join(lines)}</span><span class="go">{"".join(go)}</span></div>')  # fmt: skip
 
 
 def speech_list(sps: list[dict], root: str = "../", key: str = "sp", *, speaker: bool = True, where: bool = True,

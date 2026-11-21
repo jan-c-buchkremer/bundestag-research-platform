@@ -17,7 +17,7 @@ def test_search_page_has_custom_ui_markup():
     assert '<input type="search" id="sq"' in page
     assert 'id="sf-toggle"' in page and 'aria-controls="sf-panel"' in page
     assert '<aside class="s-filters" id="sf-panel"' in page
-    assert '<div class="rows" id="s-results"></div>' in page
+    assert '<div class="rows" id="s-results" hidden></div>' in page
     assert '<button type="button" class="more" id="s-more" hidden>Weitere Treffer</button>' in page
     assert '<script type="module" src="search.js"></script>' in page
     assert '<link rel="stylesheet" href="reden.css">' in page

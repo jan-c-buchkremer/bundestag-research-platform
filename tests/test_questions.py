@@ -70,7 +70,7 @@ def test_write_pages(conn, tmp_path):
     add_questions(conn)
     assert questions.write(conn, tmp_path) == {"regierung": 1}
     page = (tmp_path / "regierung" / "index.html").read_text()
-    assert "BT-Drs. 21/12" in page and "../sitzungen/21-88.html#top-1" in page and "Fragestunden" in page
+    assert "BT-Drs. 21/12" in page and "../regierung/regierungsbefragung/21-88.html" in page and "Fragestunden" in page
     export = tmp_path / "export"
     export.mkdir()
     (export / "README.md").write_text("x")
