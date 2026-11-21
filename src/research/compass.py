@@ -415,6 +415,11 @@ def questions(decisions: list[dict], members: dict[str, list[list]]) -> list[dic
     return qs if len(qs) >= MIN_QUESTIONS else []
 
 
+# Off on the site until the selection of questions is trusted to show positions without a bias (Jan, 2026-11-21):
+# the build writes no kompass.html then and leads the old address to the Abstimmungen; no page links to it.
+PUBLISHED = False
+
+
 def write(out, qs: list[dict], cards: list[dict], places: dict | None = None) -> dict[str, int]:
     """Write kompass.html from `questions()`; nothing when that is empty. `places` (places.index_payload) says who
     represents a Wahlkreis, as on its place page (D25)."""

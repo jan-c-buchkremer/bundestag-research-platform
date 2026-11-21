@@ -8,7 +8,7 @@ import json
 import shutil
 from pathlib import Path
 
-from research import cohesion, compass, facts, legal, pages, ui
+from research import cohesion, compass, facts, legal, pages, redirects, ui
 from research.data import DIP_DOC, VOTE_CHOICES, index_row, page_id
 from research.ui import VOTE, e, long_date, n
 
@@ -281,7 +281,9 @@ def write_site(
     shutil.copytree(HERE / "fonts", out / "fonts", dirs_exist_ok=True)
     legal.write(out)
     if sittings:
-        quiz = compass.questions(decisions or [], members or {})
+        quiz = compass.questions(decisions or [], members or {}) if compass.PUBLISHED else []
+        if not compass.PUBLISHED:
+            redirects.write(out, "kompass.html", "abstimmungen/index.html", "Abstimmungen")
         written = pages.write_pages(out, decisions or [], members or {}, sittings, meta, clusters, bool(quiz))
         days = [s["date"] for s in sittings]
         written["abstimmungen"] += cohesion.write_page(out, decisions or [], members or {}, days)

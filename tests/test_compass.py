@@ -53,6 +53,7 @@ def test_no_page_until_curated(conn, tmp_path):
 def test_page_when_curated(conn, tmp_path, monkeypatch):
     monkeypatch.setattr(compass, "candidates", lambda: [cand("21/88/1", "namentlich", note="öffentlich")])
     monkeypatch.setattr(compass, "MIN_QUESTIONS", 1)
+    monkeypatch.setattr(compass, "PUBLISHED", True)
     cards, meta = data.cards(conn)
     decided = data.decisions(conn)
     written = build.write_site(cards, meta, tmp_path, decisions=decided, members=data.roll_call_members(conn),

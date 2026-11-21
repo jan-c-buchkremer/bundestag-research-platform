@@ -267,3 +267,7 @@ html[data-design=b] .ov { border-top: 3px solid var(--research); }
 .stage.st-abgelehnt, .stage.st-versagt { color: #b42318; }
 .row .l .dipst { white-space: normal; max-width: 240px; margin-left: auto; }
 @media (max-width: 640px) { .row .l { white-space: normal; } .row .l .php { white-space: normal; } .row .l .dipst { text-align: left; margin-left: 0; } }
+
+/* long titles (ui.title_size): a Rede or Vorgang named after a whole bill */
+html[data-design=b] .card h1.long, .card h1.long { font-size: calc(var(--head-xl) - 4px); line-height: 1.2; }
+html[data-design=b] .card h1.vlong, .card h1.vlong { font-size: 19px; line-height: 1.35; font-weight: 700; letter-spacing: -.01em; }

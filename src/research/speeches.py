@@ -18,7 +18,7 @@ from pathlib import Path
 from research import urls
 from research.data import WP, display_speaker, has_speech_kind, page_id, top_label
 from research.titles import short_title
-from research.ui import FOOTER, LANDSCAPE, TOKEN, e, long_date, n, search_marks, shell, short_date
+from research.ui import FOOTER, LANDSCAPE, TOKEN, e, long_date, n, search_marks, shell, short_date, title_size
 
 HERE = Path(__file__).parent
 SIMILAR = 5
@@ -131,7 +131,7 @@ def speech_page(r: dict, cards: set[str], clusters: dict[str, dict], similar: li
 <span hidden data-pagefind-meta="date:{e(r["date"])}"></span>
 <section class="card sp-head" style="--c:var(--{TOKEN.get(main["fraction"] or "", "reg")})">
   <div class="when" data-pagefind-ignore>{e(long_date(r["date"], True))} · {r["number"]}. Sitzung</div>
-  <h1 data-pagefind-meta="title">{e(main["name"])}: {e(topic)}</h1>
+  <h1{title_size(main["name"] + topic)} data-pagefind-meta="title">{e(main["name"])}: {e(topic)}</h1>
   <div class="lines" data-pagefind-ignore>{speaker(main, cards)} · <a href="{item}">{e(r["label"] or "Tagesordnung")}</a> · {n(words)} Wörter</div>
   <div class="links" data-pagefind-ignore>{"".join(links)}</div>
 </section>

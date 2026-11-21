@@ -324,6 +324,12 @@ def crumbs(*links: tuple[str | None, str]) -> str:
     return f'<p class="crumbs">{" › ".join(parts)}</p>'
 
 
+def title_size(title: str) -> str:
+    """A class for a long page title, so a Vorgang or a Rede with a whole bill's name in it does not fill the screen
+    (design.css h1.long, h1.vlong)."""
+    return ' class="vlong"' if len(title) > 200 else ' class="long"' if len(title) > 90 else ""
+
+
 def entity_header(
     title: str,
     lines: list[str],
@@ -337,8 +343,8 @@ def entity_header(
     top = f'<div class="when">{when}</div>' if when else ""
     rows = "".join(f"<div>{x}</div>" for x in lines if x)
     more = f'<div class="links">{"".join(links)}</div>' if links else ""
-    return (f'<section class="card ent-head {cls}">{top}<h1>{e(title)}</h1><div class="lines">{rows}</div>'
-            f"{unit_pills(pills or [])}{more}</section>")  # fmt: skip
+    return (f'<section class="card ent-head {cls}">{top}<h1{title_size(title)}>{e(title)}</h1>'
+            f'<div class="lines">{rows}</div>{unit_pills(pills or [])}{more}</section>')  # fmt: skip
 
 
 def facet(key: str, title: str, body: str, count: int | None = None, explain: str = "") -> str:

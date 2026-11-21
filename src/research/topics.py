@@ -17,6 +17,8 @@ from research import facts, urls
 from research.ui import (
     FOOTER,
     LANDSCAPE,
+    ORDER,
+    TOKEN,
     crumbs,
     dot,
     e,
@@ -24,6 +26,7 @@ from research.ui import (
     facet,
     frac_link,
     fraction_order,
+    long_date,
     method_note,
     n,
     shell,
@@ -87,18 +90,69 @@ def topic_page(th: dict, procedures: dict[str, dict]) -> str:
                  data={"kind": "topic", "id": th["id"]}, head='<meta name="robots" content="noindex">')  # fmt: skip
 
 
-def index_page(themes: dict[int, dict]) -> str:
-    rows = "".join(
-        f'<a class="row v" href="{e(th["id"])}.html"><span class="t"><span class="ti">{e(th["label"])}</span></span>'
-        f'<span class="l">{n(len(th["speeches"]))} Reden</span></a>'
-        for th in themes.values()
+SHOWN = 40  # themes in the overview before "Alle N zeigen"
+
+
+def mix_bar(sps: list[dict]) -> str:
+    """The theme's speeches by fraction as one stacked bar, in the fractions' colours and order."""
+    per = Counter(sp.get("fraction") or "ohne Fraktion" for sp in sps)
+    total = sum(per.values()) or 1
+    parts = "".join(
+        f'<i style="width:{100 * k / total:.1f}%;background:var(--{TOKEN.get(f, "reg")})" title="{e(f)}: {n(k)}"></i>'
+        for f, k in sorted(per.items(), key=lambda kv: fraction_order(kv[0]))
     )
-    body = ('<h1>Themen</h1><p class="lead">Die Themen der 21. Wahlperiode aus der Themenlandschaft, das größte '
-            f'zuerst. {NOTE}</p><div class="rows">{rows}</div>'
-            f"{method_note(METHOD)}<footer>{FOOTER}</footer>")  # fmt: skip
+    return f'<span class="mix" aria-hidden="true">{parts}</span>'  # fmt: skip
+
+
+def index_page(themes: dict[int, dict]) -> str:
+    biggest = max((len(th["speeches"]) for th in themes.values()), default=1)
+
+    def row(th: dict) -> str:
+        sps = th["speeches"]
+        last = max(sp["date"] for sp in sps)
+        return (f'<a class="row th" href="{e(th["id"])}.html"><span class="t"><span class="ti">{e(th["label"])}</span>'
+                f'<span class="sub">{mix_bar(sps)}<span>zuletzt am {e(long_date(last))}</span></span></span>'
+                f'<span class="l"><b>{n(len(sps))}</b> Reden<span class="size"><i style="width:'
+                f'{100 * len(sps) / biggest:.1f}%"></i></span></span></a>')  # fmt: skip
+
+    ths = list(themes.values())
+    total = sum(len(th["speeches"]) for th in ths)
+    rest = (f'<details class="srest"><summary>Alle {n(len(ths))} Themen zeigen</summary><div class="rows">'
+            f'{"".join(row(th) for th in ths[SHOWN:])}</div></details>' if len(ths) > SHOWN else "")  # fmt: skip
+    keys = "".join(f'<span class="k"><span class="dot" style="background:var(--{TOKEN[f]})"></span>{e(f)}</span>'
+                   for f in ORDER if f in TOKEN)  # fmt: skip
+    body = (
+        entity_header("Themen der Wahlperiode", [f"{n(len(ths))} Themen aus {n(total)} Reden der 21. Wahlperiode, "
+                      "das größte zuerst.", NOTE],
+                      [f'<a class="rl" href="{LANDSCAPE}index.html">In der Themenlandschaft</a>'], when="Thema")
+        + f'<div class="th-keys"><span>Reden nach Fraktion:</span>{keys}<span class="sz"><span class="size"><i '
+        'style="width:60%"></i></span>Größe im Vergleich zum größten Thema</span></div>'
+        + f'<div class="rows">{"".join(row(th) for th in ths[:SHOWN])}</div>{rest}'
+        + f"{method_note(METHOD)}<footer>{FOOTER}</footer>"
+    )  # fmt: skip
+    style = """<style>
+.p-topics .row.th { grid-template-columns: 1fr 150px; align-items: center; }
+.p-topics .row.th .sub { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+.p-topics .mix { display: inline-flex; width: 180px; height: 7px; border-radius: 4px; overflow: hidden;
+  background: var(--line); }
+.p-topics .mix i { display: block; height: 100%; }
+.p-topics .row.th .l { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-size: 12.5px;
+  color: var(--muted); white-space: nowrap; }
+.p-topics .row.th .l b { color: var(--text); font-size: 14px; }
+.p-topics .size { display: block; width: 120px; height: 5px; border-radius: 3px; background: var(--radar-soft); }
+.p-topics .size i { display: block; height: 100%; border-radius: 3px; background: var(--radar); }
+.p-topics .th-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 18px 0 10px;
+  font-size: 12px; color: var(--muted); }
+.p-topics .th-keys .sz { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.p-topics .th-keys .sz .size { width: 40px; }
+.p-topics .th-keys .dot { margin-right: 5px; }
+.p-topics .srest > summary { margin-top: 10px; }
+@media (max-width: 560px) { .p-topics .row.th { grid-template-columns: 1fr; } .p-topics .row.th .l {
+  flex-direction: row; align-items: center; } .p-topics .mix { width: 140px; } }
+</style>"""
     return shell(root="../", kind="p-topics", active="radar", mode="radar", title="Themen der Wahlperiode",
                  desc="Die Themen der Reden im 21. Deutschen Bundestag, aus der Themenlandschaft.", body=body,
-                 data={"kind": "topics"}, head='<meta name="robots" content="noindex">')  # fmt: skip
+                 data={"kind": "topics"}, head='<meta name="robots" content="noindex">' + style)  # fmt: skip
 
 
 def write(out: Path, themes: dict[str, dict], speeches: list[dict], sittings: list[dict]) -> dict[int, dict]:

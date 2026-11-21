@@ -5,8 +5,17 @@ not before? If that sentence is hard to write, the release is not a finished ver
 
 ## Unreleased
 
-Readers see every member of a Fraktion or Gremium with their photo, find the hib reports on a Vorgang and in its
-week, and get from a Sitzungswoche straight to the Radar's summary of it.
+## v0.3.0 (2026-11-21)
+
+Readers read every question of a Fragestunde with its answer, see the members of a Fraktion or Gremium with their
+photo, find the hib reports on a Vorgang, get from a Sitzungswoche straight to the Radar's summary of it, and move
+through every page in one design with the Radar.
+
+- „Wer stimmt wie ich?“ is off until its choice of questions is trusted to show positions without a bias
+  (`compass.PUBLISHED`): no page links to it, and `kompass.html` leads to the Abstimmungen.
+- Design B is the only design; the switch between A and B is gone.
+- Themen: the overview as a head card and one row per theme with its Fraktion mix, its last speech and its size
+  next to the largest theme. Long page titles (a Rede or Vorgang named after a whole bill) are set smaller.
 
 - The search page in the design of the other pages: a head card with the field, examples and a pill per kind of
   result; people, places, Vorgänge (with their phase pill) and themes as cards with „Alle N zeigen“; Fraktion colours
