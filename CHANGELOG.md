@@ -14,6 +14,7 @@ through every page in one design with the Radar.
 - „Wer stimmt wie ich?“ is off until its choice of questions is trusted to show positions without a bias
   (`compass.PUBLISHED`): no page links to it, and `kompass.html` leads to the Abstimmungen.
 - Design B is the only design; the switch between A and B is gone.
+- CI runs on ubuntu-24.04: Playwright 1.55 cannot install Chromium on the new ubuntu-latest (26.04).
 - Themen: the overview as a head card and one row per theme with its Fraktion mix, its last speech and its size
   next to the largest theme. Long page titles (a Rede or Vorgang named after a whole bill) are set smaller.
 
