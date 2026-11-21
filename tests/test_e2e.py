@@ -191,7 +191,9 @@ def test_old_index_view_states_reach_the_place_pages(site):
     assert "location.replace('abgeordnete.html' + location.search + location.hash)" in front
     need_node()
     page = (site / "abgeordnete.html").read_text()
-    assert '<script src="places.js"></script>' in page and "Places.legacyTarget(location.hash" in page
+    # the build versions its scripts (ui.versioned): places.js?v=<hash>
+    assert re.search(r'<script src="places\.js(\?v=\w+)?"></script>', page)
+    assert "Places.legacyTarget(location.hash" in page
     slugs = json.loads(re.search(r"Places\.legacyTarget\(location\.hash, (\{.*?\})\)", page).group(1))
     hashes = ["#ansicht=wahlkreise", "#ansicht=wahlkreise&wk=14", "#ansicht=wahlkreise&q=x&state=BY&wk=58",
               "#ansicht=wahlkreise&state=BB", "#ansicht=personen&state=BY", "#ort=BY", ""]  # fmt: skip
