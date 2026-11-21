@@ -173,13 +173,4 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') close(null); });
   for (const ev of ['mouseover', 'focusin']) document.addEventListener(ev, e => { const i = e.target.closest && e.target.closest('.info'); if (i) requestAnimationFrame(() => place(i)); });
   addEventListener('scroll', () => document.querySelectorAll('.info.pinned').forEach(place), { passive: true });
-  // the switch between the two versions, outside the public site while they are compared
-  if (research && location.hostname !== 'plenar-radar.de' && document.documentElement.dataset.design) {
-    const s = document.createElement('div');
-    s.className = 'dsw'; s.setAttribute('aria-label', 'Designversion');
-    const cur = document.documentElement.dataset.design;
-    s.innerHTML = ['a', 'b'].map(v => `<button type="button" data-v="${v}" aria-pressed="${v === cur}">Version ${v.toUpperCase()}</button>`).join('');
-    s.addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; localStorage.setItem('design', v); document.documentElement.dataset.design = v; s.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === v)); });
-    document.body.appendChild(s);
-  }
 })();

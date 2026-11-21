@@ -215,11 +215,6 @@ body.p-sittings .cal .strip .m a:hover { background: var(--research-ink); text-d
 body.p-sittings .cal .wk { border-top: 3px solid var(--research-line); }
 body.p-sittings .cal .wk h3 { font-size: 16px; font-weight: 750; }
 
-/* ---- the design switch, outside the public site while A and B are compared */
-.dsw { position: fixed; z-index: 80; right: 14px; bottom: 14px; display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: #111827; box-shadow: 0 6px 20px rgba(0,0,0,.25); font: 600 12px/1 Inter, system-ui, sans-serif; }
-.dsw button { border: 0; border-radius: 999px; padding: 7px 12px; background: transparent; color: #cbd5e1; cursor: pointer; font: inherit; }
-.dsw button[aria-pressed=true] { background: #fff; color: #111827; }
-
 @media (max-width: 640px) {
   :root { --head-xl: 26px; --head-l: 18px; }
   .people { grid-template-columns: 1fr; }
